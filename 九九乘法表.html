@@ -541,7 +541,7 @@
 
     <div class="input-bar">
       <label>输入答案：</label>
-      <input id="answerInput" type="text" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="?">
+      <input id="answerInput" type="text" inputmode="numeric" autocomplete="off" maxlength="2" placeholder="?">
       <span style="font-size:1.5vh;color:#636e72;">输入数字会自动判断，回车也可以</span>
     </div>
   </main>
@@ -1007,10 +1007,25 @@
     }
   }
 
+  function tryAutoCheck() {
+    const val = answerInput.value;
+    if (!val) return;
+    const num = parseInt(val, 10);
+    if (isNaN(num)) return;
+    const exact = state.cards.some(c => c.answer === num);
+    if (!exact) return;
+    // 场上还有「以当前输入为前缀的更长答案」时 → 等用户继续输入或回车
+    const couldBeLonger = state.cards.some(c => {
+      const a = String(c.answer);
+      return a.length > val.length && a.startsWith(val);
+    });
+    if (couldBeLonger) return;
+    checkAnswer();
+  }
+
   answerInput.addEventListener("input", () => {
-    // strip non-digits
     answerInput.value = answerInput.value.replace(/\D/g, "");
-    if (answerInput.value.length >= 2) checkAnswer();
+    tryAutoCheck();
   });
   answerInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
