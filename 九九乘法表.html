@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>战战的九九乘法表</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: "Comic Sans MS", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 50%, #a29bfe 100%);
+    color: #2d3436;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    padding: 0.8vh 1.5vw;
+  }
+
+  /* ===== Tabs ===== */
+  .tabs {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 0.8vh;
+  }
+  .tabs button {
+    border: none;
+    background: rgba(255,255,255,0.6);
+    color: #2d3436;
+    padding: 1vh 3vw;
+    border-radius: 999px 999px 0 0;
+    font-size: 2vh;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 -3px 0 rgba(0,0,0,0.08) inset;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .tabs button:hover { background: rgba(255,255,255,0.85); }
+  .tabs button.active {
+    background: #fff;
+    color: #d63031;
+    transform: translateY(-2px);
+    box-shadow: 0 -4px 0 #ff7675 inset;
+  }
+
+  .page {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .page[hidden] { display: none; }
+
+  /* ===== Learn page ===== */
+  .learn-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 1vw;
+  }
+  .title-block { flex: 0 0 auto; }
+  h1 {
+    font-size: 3vh;
+    color: #fff;
+    text-shadow: 2px 2px 0 #ff7675, 4px 4px 0 rgba(0,0,0,0.1);
+    letter-spacing: 3px;
+    line-height: 1.1;
+  }
+  .subtitle {
+    font-size: 1.5vh;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    margin-top: 4px;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .toolbar button {
+    border: none;
+    background: #fff;
+    color: #2d3436;
+    padding: 1vh 1.5vw;
+    border-radius: 999px;
+    font-size: 1.5vh;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.15);
+    transition: transform 0.1s, box-shadow 0.1s;
+    white-space: nowrap;
+  }
+  .toolbar button:hover { transform: translateY(-2px); box-shadow: 0 5px 0 rgba(0,0,0,0.15); }
+  .toolbar button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.15); }
+  .toolbar button.active { background: #ff7675; color: #fff; }
+
+  .table-wrap {
+    flex: 1 1 auto;
+    margin-top: 1vh;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 18px;
+    padding: 1.2vh 1vw;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  table {
+    border-collapse: separate;
+    border-spacing: 0.5vh;
+    height: 100%;
+    table-layout: fixed;
+  }
+  td { width: 9vh; height: 9vh; padding: 0; }
+
+  .cell {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    user-select: none;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.1);
+    position: relative;
+  }
+  .cell:hover {
+    transform: scale(1.1) rotate(-2deg);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.25);
+    z-index: 5;
+  }
+  .cell.speaking {
+    box-shadow: 0 0 0 3px #fff, 0 8px 20px rgba(255, 118, 117, 0.6);
+  }
+  .cell .formula { font-size: 1.7vh; font-weight: bold; line-height: 1.2; }
+  .cell .result { font-size: 2.6vh; font-weight: 900; line-height: 1.1; margin-top: 2px; }
+  .cell .chinese {
+    font-size: 1.3vh;
+    opacity: 0.8;
+    margin-top: 3px;
+    font-family: "KaiTi", "STKaiti", "Microsoft YaHei", serif;
+    line-height: 1;
+  }
+
+  .c1 { background: #fab1a0; color: #6c3a2a; }
+  .c2 { background: #ffeaa7; color: #7c5e10; }
+  .c3 { background: #a8e6cf; color: #1d6b4e; }
+  .c4 { background: #81ecec; color: #0e5454; }
+  .c5 { background: #74b9ff; color: #1e3a6b; }
+  .c6 { background: #a29bfe; color: #2d2570; }
+  .c7 { background: #fd79a8; color: #6b1c3e; }
+  .c8 { background: #ffb8b8; color: #6c2a2a; }
+  .c9 { background: #ffd86b; color: #6b4d0a; }
+
+  .empty { visibility: hidden; }
+
+  body.hide-mode .cell .result { color: transparent !important; text-shadow: none; }
+  body.hide-mode .cell .chinese { visibility: hidden; }
+  body.hide-mode .cell.revealed .result { color: inherit !important; }
+  body.hide-mode .cell.revealed .chinese { visibility: visible; }
+  body.hide-mode .cell::after {
+    content: "?";
+    position: absolute;
+    font-size: 2.5vh;
+    font-weight: 900;
+    opacity: 0.45;
+    bottom: 8%;
+  }
+  body.hide-mode .cell.revealed::after { content: ""; }
+
+  footer {
+    flex: 0 0 auto;
+    text-align: center;
+    padding-top: 0.5vh;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    font-size: 1.3vh;
+  }
+
+  /* ===== Game page ===== */
+  .game-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1vw;
+    gap: 12px;
+  }
+  .game-title {
+    font-size: 2.6vh;
+    color: #fff;
+    text-shadow: 2px 2px 0 #6c5ce7, 4px 4px 0 rgba(0,0,0,0.1);
+    letter-spacing: 2px;
+  }
+  .stats {
+    display: flex;
+    gap: 14px;
+    font-size: 2vh;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+  }
+  .stats .chip {
+    background: rgba(255,255,255,0.9);
+    color: #2d3436;
+    padding: 0.6vh 1.5vw;
+    border-radius: 999px;
+    text-shadow: none;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.15);
+  }
+  .game-controls { display: flex; gap: 8px; }
+  .game-controls button {
+    border: none;
+    background: #fff;
+    color: #2d3436;
+    padding: 1vh 1.5vw;
+    border-radius: 999px;
+    font-size: 1.6vh;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.15);
+  }
+  .game-controls button:hover { transform: translateY(-2px); }
+  .game-controls button.primary { background: #00b894; color: #fff; }
+  .game-controls button.danger { background: #ff7675; color: #fff; }
+
+  .field-wrap {
+    flex: 1 1 auto;
+    margin-top: 1vh;
+    background: rgba(255,255,255,0.7);
+    border-radius: 18px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(255,255,255,0.6) 0, transparent 12%),
+      radial-gradient(circle at 80% 50%, rgba(255,255,255,0.5) 0, transparent 14%),
+      radial-gradient(circle at 40% 80%, rgba(255,255,255,0.55) 0, transparent 13%);
+  }
+
+  .falling-card {
+    position: absolute;
+    width: 12vh;
+    height: 9vh;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.2vh;
+    font-weight: 900;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.15);
+    color: #fff;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.15);
+    letter-spacing: 1px;
+    will-change: transform;
+  }
+  .falling-card.glow {
+    animation: pulse 0.4s ease-in-out infinite alternate;
+  }
+  @keyframes pulse {
+    from { box-shadow: 0 5px 0 rgba(0,0,0,0.15), 0 0 0 0 rgba(255,255,255,0.5); }
+    to { box-shadow: 0 5px 0 rgba(0,0,0,0.15), 0 0 0 8px rgba(255,255,255,0); }
+  }
+
+  .explosion {
+    position: absolute;
+    pointer-events: none;
+    width: 12vh;
+    height: 9vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .explosion .answer-text {
+    font-size: 6vh;
+    font-weight: 900;
+    color: #fff;
+    text-shadow:
+      0 0 10px #fff,
+      0 0 20px #ffd86b,
+      3px 3px 0 #ff7675,
+      6px 6px 0 rgba(0,0,0,0.2);
+    animation: answerPop 1.4s ease-out forwards;
+    z-index: 2;
+  }
+  @keyframes answerPop {
+    0% { transform: scale(0.3); opacity: 0; }
+    30% { transform: scale(1.4); opacity: 1; }
+    70% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1.6) translateY(-30px); opacity: 0; }
+  }
+  .particle {
+    position: absolute;
+    width: 1.5vh;
+    height: 1.5vh;
+    border-radius: 50%;
+    animation: burst 1.1s ease-out forwards;
+  }
+  @keyframes burst {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+  }
+
+  .input-bar {
+    flex: 0 0 auto;
+    margin-top: 1vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 0.8vh 1vw;
+    background: rgba(255,255,255,0.85);
+    border-radius: 18px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  }
+  .input-bar label { font-size: 2vh; font-weight: bold; color: #6c5ce7; }
+  #answerInput {
+    font-size: 4vh;
+    font-weight: 900;
+    border: 4px solid #a29bfe;
+    border-radius: 14px;
+    padding: 0.4vh 2vw;
+    width: 18vh;
+    text-align: center;
+    outline: none;
+    background: #fff;
+    color: #2d3436;
+    transition: border-color 0.15s, transform 0.1s;
+  }
+  #answerInput:focus { border-color: #6c5ce7; }
+  #answerInput.shake {
+    animation: shake 0.4s;
+    border-color: #ff7675;
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-10px); }
+    40% { transform: translateX(10px); }
+    60% { transform: translateX(-8px); }
+    80% { transform: translateX(8px); }
+  }
+
+  .game-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(45, 52, 54, 0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    color: #fff;
+    z-index: 100;
+    border-radius: 18px;
+  }
+  .game-overlay h2 {
+    font-size: 5vh;
+    color: #ffd86b;
+    text-shadow: 3px 3px 0 #ff7675;
+    letter-spacing: 4px;
+  }
+  .game-overlay p { font-size: 2.5vh; }
+  .game-overlay button {
+    border: none;
+    background: #00b894;
+    color: #fff;
+    padding: 1.6vh 4vw;
+    border-radius: 999px;
+    font-size: 2.5vh;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+  }
+  .game-overlay button:hover { transform: translateY(-2px); }
+</style>
+</head>
+<body>
+  <nav class="tabs">
+    <button id="tabLearn" class="active" data-page="learnPage">📖 学习表</button>
+    <button id="tabGame" data-page="gamePage">🎮 口诀游戏</button>
+  </nav>
+
+  <!-- ====== Learn page ====== -->
+  <main class="page" id="learnPage">
+    <div class="learn-header">
+      <div class="title-block">
+        <h1>🌟 战战的九九乘法表 🌟</h1>
+        <div class="subtitle">点一下卡片就会读口诀 🔊</div>
+      </div>
+      <div class="toolbar">
+        <button id="btnSound" class="active">🔊 朗读开</button>
+        <button id="btnShow" class="active">显示答案</button>
+        <button id="btnHide">藏起来考考我</button>
+        <button id="btnRevealAll">全部翻开</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table id="multTable"></table>
+    </div>
+
+    <footer>点卡片读口诀，慢慢就记住啦 💪</footer>
+  </main>
+
+  <!-- ====== Game page ====== -->
+  <main class="page" id="gamePage" hidden>
+    <div class="game-header">
+      <div class="game-title">🎮 口诀大爆炸</div>
+      <div class="stats">
+        <div class="chip">⭐ 得分 <span id="score">0</span></div>
+        <div class="chip">❤️ 生命 <span id="lives">3</span></div>
+        <div class="chip">🚀 难度 <span id="level">1</span></div>
+      </div>
+      <div class="game-controls">
+        <button id="btnStart" class="primary">▶ 开始</button>
+        <button id="btnPause">⏸ 暂停</button>
+        <button id="btnReset" class="danger">🔄 重玩</button>
+      </div>
+    </div>
+
+    <div class="field-wrap" id="field">
+      <div class="game-overlay" id="overlay">
+        <h2 id="overlayTitle">准备好了吗？</h2>
+        <p id="overlayMsg">卡片从天上掉下来，输入正确答案就会爆炸！</p>
+        <button id="overlayBtn">开始游戏</button>
+      </div>
+    </div>
+
+    <div class="input-bar">
+      <label>输入答案：</label>
+      <input id="answerInput" type="text" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="?">
+      <span style="font-size:1.5vh;color:#636e72;">输入数字会自动判断，回车也可以</span>
+    </div>
+  </main>
+
+<script>
+  // ============ Shared: speech & 口诀 ============
+  const chineseDigits = ["零","一","二","三","四","五","六","七","八","九"];
+
+  function kouJue(a, b) {
+    const small = Math.min(a, b);
+    const big = Math.max(a, b);
+    const product = a * b;
+    let prodCn;
+    if (product < 10) {
+      prodCn = "得" + chineseDigits[product];
+    } else {
+      const tens = Math.floor(product / 10);
+      const ones = product % 10;
+      prodCn = chineseDigits[tens] + "十" + (ones === 0 ? "" : chineseDigits[ones]);
+    }
+    return chineseDigits[small] + chineseDigits[big] + prodCn;
+  }
+
+  let soundOn = true;
+  let zhVoice = null;
+  function pickVoice() {
+    const voices = speechSynthesis.getVoices();
+    zhVoice =
+      voices.find(v => /zh[-_]CN/i.test(v.lang)) ||
+      voices.find(v => /^zh/i.test(v.lang)) ||
+      voices.find(v => /chinese/i.test(v.name)) || null;
+  }
+  if ('speechSynthesis' in window) {
+    pickVoice();
+    speechSynthesis.onvoiceschanged = pickVoice;
+  }
+  function speak(text, cellEl) {
+    if (!soundOn || !('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN';
+    if (zhVoice) u.voice = zhVoice;
+    u.rate = 0.85;
+    u.pitch = 1.15;
+    if (cellEl) {
+      u.onstart = () => cellEl.classList.add('speaking');
+      u.onend = () => cellEl.classList.remove('speaking');
+      u.onerror = () => cellEl.classList.remove('speaking');
+    }
+    speechSynthesis.speak(u);
+  }
+
+  // unlock TTS on first interaction
+  document.addEventListener("click", function unlock() {
+    if ('speechSynthesis' in window) {
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      speechSynthesis.speak(u);
+    }
+  }, { once: true });
+
+  // ============ Tabs ============
+  const pages = { learnPage: document.getElementById("learnPage"), gamePage: document.getElementById("gamePage") };
+  const tabBtns = document.querySelectorAll(".tabs button");
+  tabBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabBtns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      Object.entries(pages).forEach(([k, el]) => el.hidden = k !== btn.dataset.page);
+      if (btn.dataset.page === "gamePage") {
+        document.getElementById("answerInput").focus();
+      }
+    });
+  });
+
+  // ============ Learn table ============
+  const table = document.getElementById("multTable");
+  for (let i = 1; i <= 9; i++) {
+    const tr = document.createElement("tr");
+    for (let j = 1; j <= 9; j++) {
+      const td = document.createElement("td");
+      if (j > i) {
+        td.className = "empty";
+      } else {
+        const div = document.createElement("div");
+        div.className = "cell c" + j;
+        const text = kouJue(j, i);
+        div.innerHTML =
+          '<div class="formula">' + j + ' × ' + i + '</div>' +
+          '<div class="result">' + (i * j) + '</div>' +
+          '<div class="chinese">' + text + '</div>';
+        div.addEventListener("click", () => {
+          div.classList.toggle("revealed");
+          speak(text, div);
+        });
+        td.appendChild(div);
+      }
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  }
+
+  const btnSound = document.getElementById("btnSound");
+  const btnShow = document.getElementById("btnShow");
+  const btnHide = document.getElementById("btnHide");
+  const btnRevealAll = document.getElementById("btnRevealAll");
+
+  btnSound.addEventListener("click", () => {
+    soundOn = !soundOn;
+    btnSound.classList.toggle("active", soundOn);
+    btnSound.textContent = soundOn ? "🔊 朗读开" : "🔇 朗读关";
+    if (!soundOn) speechSynthesis.cancel();
+  });
+  btnShow.addEventListener("click", () => {
+    document.body.classList.remove("hide-mode");
+    btnShow.classList.add("active"); btnHide.classList.remove("active");
+    document.querySelectorAll(".cell.revealed").forEach(c => c.classList.remove("revealed"));
+  });
+  btnHide.addEventListener("click", () => {
+    document.body.classList.add("hide-mode");
+    btnHide.classList.add("active"); btnShow.classList.remove("active");
+    document.querySelectorAll(".cell.revealed").forEach(c => c.classList.remove("revealed"));
+  });
+  btnRevealAll.addEventListener("click", () => {
+    if (!document.body.classList.contains("hide-mode")) return;
+    document.querySelectorAll(".cell").forEach(c => c.classList.add("revealed"));
+  });
+
+  // ============ Game ============
+  const field = document.getElementById("field");
+  const overlay = document.getElementById("overlay");
+  const overlayTitle = document.getElementById("overlayTitle");
+  const overlayMsg = document.getElementById("overlayMsg");
+  const overlayBtn = document.getElementById("overlayBtn");
+  const scoreEl = document.getElementById("score");
+  const livesEl = document.getElementById("lives");
+  const levelEl = document.getElementById("level");
+  const answerInput = document.getElementById("answerInput");
+  const btnStart = document.getElementById("btnStart");
+  const btnPause = document.getElementById("btnPause");
+  const btnReset = document.getElementById("btnReset");
+
+  const COLORS = ["#fab1a0","#ffeaa7","#a8e6cf","#81ecec","#74b9ff","#a29bfe","#fd79a8","#ffd86b","#55efc4"];
+
+  const state = {
+    running: false,
+    paused: false,
+    score: 0,
+    lives: 3,
+    level: 1,
+    cards: [],          // {el, a, b, answer, x, y, vy}
+    spawnTimer: 0,
+    spawnInterval: 1.8, // seconds
+    lastTime: 0,
+  };
+
+  function resetState() {
+    state.cards.forEach(c => c.el.remove());
+    state.cards = [];
+    state.score = 0;
+    state.lives = 3;
+    state.level = 1;
+    state.spawnTimer = 0;
+    state.spawnInterval = 1.8;
+    state.running = false;
+    state.paused = false;
+    state.lastTime = 0;
+    updateStats();
+  }
+
+  function updateStats() {
+    scoreEl.textContent = state.score;
+    livesEl.textContent = "❤".repeat(Math.max(state.lives, 0)) || "0";
+    levelEl.textContent = state.level;
+  }
+
+  function spawnCard() {
+    const a = 2 + Math.floor(Math.random() * 8); // 2..9
+    const b = 2 + Math.floor(Math.random() * 8);
+    const answer = a * b;
+    const el = document.createElement("div");
+    el.className = "falling-card";
+    el.style.background = COLORS[Math.floor(Math.random() * COLORS.length)];
+    el.textContent = a + " × " + b;
+    const rect = field.getBoundingClientRect();
+    const cardW = rect.height * 0.12; // 12vh ≈ but field is portion of vh; we use field height ratio
+    // Use field width to position horizontally
+    const fw = field.clientWidth;
+    const fh = field.clientHeight;
+    const cardWidth = fh * 0.12 / 0.09 * 0.12; // skip — just use known vh sizing approximated
+    // Simpler: compute pixel size from getBoundingClientRect of a temp
+    el.style.left = "0px";
+    el.style.top = "-10vh";
+    field.appendChild(el);
+    const cw = el.offsetWidth;
+    const x = Math.random() * Math.max(fw - cw - 10, 10) + 5;
+    el.style.left = x + "px";
+    const vy = 40 + state.level * 8 + Math.random() * 20; // px/s
+    state.cards.push({ el, a, b, answer, x, y: -el.offsetHeight, vy });
+  }
+
+  function explodeCard(card) {
+    const rect = card.el.getBoundingClientRect();
+    const fieldRect = field.getBoundingClientRect();
+    const cx = rect.left - fieldRect.left;
+    const cy = rect.top - fieldRect.top;
+    const cw = rect.width;
+    const ch = rect.height;
+
+    const expl = document.createElement("div");
+    expl.className = "explosion";
+    expl.style.left = cx + "px";
+    expl.style.top = cy + "px";
+    expl.style.width = cw + "px";
+    expl.style.height = ch + "px";
+
+    const answerText = document.createElement("div");
+    answerText.className = "answer-text";
+    answerText.textContent = card.answer;
+    expl.appendChild(answerText);
+
+    // particles
+    const N = 18;
+    for (let i = 0; i < N; i++) {
+      const p = document.createElement("div");
+      p.className = "particle";
+      p.style.background = COLORS[i % COLORS.length];
+      const angle = (i / N) * Math.PI * 2;
+      const dist = 80 + Math.random() * 80;
+      p.style.setProperty("--dx", Math.cos(angle) * dist + "px");
+      p.style.setProperty("--dy", Math.sin(angle) * dist + "px");
+      p.style.left = "50%";
+      p.style.top = "50%";
+      p.style.marginLeft = "-0.75vh";
+      p.style.marginTop = "-0.75vh";
+      expl.appendChild(p);
+    }
+    field.appendChild(expl);
+    setTimeout(() => expl.remove(), 1500);
+
+    card.el.remove();
+    state.cards = state.cards.filter(c => c !== card);
+
+    // speak 口诀
+    speak(kouJue(card.a, card.b));
+
+    state.score += 10;
+    if (state.score > 0 && state.score % 50 === 0) {
+      state.level++;
+      state.spawnInterval = Math.max(0.6, 1.8 - state.level * 0.12);
+    }
+    updateStats();
+  }
+
+  function loseLife(card) {
+    card.el.style.transition = "transform 0.3s, opacity 0.3s";
+    card.el.style.transform = "scale(0.5) rotate(20deg)";
+    card.el.style.opacity = "0";
+    setTimeout(() => card.el.remove(), 300);
+    state.cards = state.cards.filter(c => c !== card);
+    state.lives--;
+    updateStats();
+    answerInput.classList.add("shake");
+    setTimeout(() => answerInput.classList.remove("shake"), 400);
+    if (state.lives <= 0) gameOver();
+  }
+
+  function gameOver() {
+    state.running = false;
+    overlay.style.display = "flex";
+    overlayTitle.textContent = "🎉 游戏结束";
+    overlayMsg.textContent = "战战这次得了 " + state.score + " 分，再来一次吧！";
+    overlayBtn.textContent = "再玩一次";
+  }
+
+  function startGame() {
+    overlay.style.display = "none";
+    if (state.lives <= 0) resetState();
+    state.running = true;
+    state.paused = false;
+    state.lastTime = performance.now();
+    answerInput.value = "";
+    answerInput.focus();
+    requestAnimationFrame(tick);
+  }
+
+  function tick(now) {
+    if (!state.running) return;
+    if (state.paused) { state.lastTime = now; requestAnimationFrame(tick); return; }
+    const dt = Math.min(0.05, (now - state.lastTime) / 1000);
+    state.lastTime = now;
+
+    state.spawnTimer += dt;
+    if (state.spawnTimer >= state.spawnInterval) {
+      state.spawnTimer = 0;
+      spawnCard();
+    }
+
+    const fh = field.clientHeight;
+    for (let i = state.cards.length - 1; i >= 0; i--) {
+      const c = state.cards[i];
+      c.y += c.vy * dt;
+      c.el.style.top = c.y + "px";
+      // warning glow when near bottom
+      if (c.y > fh * 0.7) c.el.classList.add("glow"); else c.el.classList.remove("glow");
+      if (c.y > fh) loseLife(c);
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  // input handling
+  function checkAnswer() {
+    const val = answerInput.value.trim();
+    if (!val) return;
+    const num = parseInt(val, 10);
+    if (isNaN(num)) return;
+    // find lowest matching card (closest to bottom)
+    let target = null;
+    for (const c of state.cards) {
+      if (c.answer === num) {
+        if (!target || c.y > target.y) target = c;
+      }
+    }
+    if (target) {
+      explodeCard(target);
+      answerInput.value = "";
+    }
+  }
+
+  answerInput.addEventListener("input", () => {
+    // strip non-digits
+    answerInput.value = answerInput.value.replace(/\D/g, "");
+    if (answerInput.value.length >= 2) checkAnswer();
+  });
+  answerInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      checkAnswer();
+      if (answerInput.value && !state.cards.some(c => c.answer === parseInt(answerInput.value, 10))) {
+        answerInput.classList.add("shake");
+        setTimeout(() => answerInput.classList.remove("shake"), 400);
+        answerInput.value = "";
+      }
+    }
+  });
+
+  btnStart.addEventListener("click", startGame);
+  overlayBtn.addEventListener("click", startGame);
+  btnPause.addEventListener("click", () => {
+    if (!state.running) return;
+    state.paused = !state.paused;
+    btnPause.textContent = state.paused ? "▶ 继续" : "⏸ 暂停";
+    if (!state.paused) { state.lastTime = performance.now(); requestAnimationFrame(tick); }
+  });
+  btnReset.addEventListener("click", () => {
+    resetState();
+    overlay.style.display = "flex";
+    overlayTitle.textContent = "准备好了吗？";
+    overlayMsg.textContent = "卡片从天上掉下来，输入正确答案就会爆炸！";
+    overlayBtn.textContent = "开始游戏";
+    btnPause.textContent = "⏸ 暂停";
+  });
+
+  updateStats();
+</script>
+</body>
+</html>
