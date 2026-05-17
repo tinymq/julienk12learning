@@ -388,6 +388,18 @@
     box-shadow: 0 4px 0 rgba(0,0,0,0.3);
   }
   .game-overlay button:hover { transform: translateY(-2px); }
+  .overlay-buttons {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .game-overlay button.secondary { background: #fff; color: #2d3436; }
+  .game-overlay button.tertiary { background: #b2bec3; color: #fff; }
+  /* timer urgency */
+  .stats .chip.timer-warn { background: #ffd86b; color: #6b4d0a; animation: timerPulse 0.6s infinite alternate; }
+  .stats .chip.timer-danger { background: #ff7675; color: #fff; animation: timerPulse 0.4s infinite alternate; }
+  @keyframes timerPulse { from { transform: scale(1); } to { transform: scale(1.08); } }
 
   /* ===== Game settings ===== */
   .game-settings {
@@ -487,9 +499,10 @@
     <div class="game-header">
       <div class="game-title">🎮 口诀大爆炸</div>
       <div class="stats">
+        <div class="chip">⏱ <span id="timer">60</span>s</div>
         <div class="chip">⭐ 得分 <span id="score">0</span></div>
         <div class="chip">❤️ 生命 <span id="lives">3</span></div>
-        <div class="chip">🚀 难度 <span id="level">1</span></div>
+        <div class="chip">🚀 第 <span id="level">1</span> 关</div>
       </div>
       <div class="game-controls">
         <button id="btnStart" class="primary">▶ 开始</button>
@@ -521,8 +534,8 @@
     <div class="field-wrap" id="field">
       <div class="game-overlay" id="overlay">
         <h2 id="overlayTitle">准备好了吗？</h2>
-        <p id="overlayMsg">卡片从天上掉下来，输入正确答案就会爆炸！</p>
-        <button id="overlayBtn">开始游戏</button>
+        <p id="overlayMsg">每关 1 分钟，卡片从天上掉下来，输入正确答案就会爆炸！</p>
+        <div class="overlay-buttons" id="overlayButtons"></div>
       </div>
     </div>
 
@@ -662,7 +675,6 @@
   const overlay = document.getElementById("overlay");
   const overlayTitle = document.getElementById("overlayTitle");
   const overlayMsg = document.getElementById("overlayMsg");
-  const overlayBtn = document.getElementById("overlayBtn");
   const scoreEl = document.getElementById("score");
   const livesEl = document.getElementById("lives");
   const levelEl = document.getElementById("level");
@@ -703,26 +715,40 @@
     numChips.appendChild(b);
   }
 
+  const timerEl = document.getElementById("timer");
+  const overlayButtons = document.getElementById("overlayButtons");
+  const timerChip = timerEl.parentElement;
+
+  const ROUND_DURATION = 60;
+
   const state = {
     running: false,
     paused: false,
-    score: 0,
+    score: 0,           // cumulative across rounds
+    roundScore: 0,      // current round only
     lives: 3,
     level: 1,
-    cards: [],          // {el, a, b, answer, x, y, vy}
+    cards: [],
     spawnTimer: 0,
-    spawnInterval: 1.8, // seconds
+    spawnInterval: 1.8,
+    roundTime: ROUND_DURATION,
     lastTime: 0,
   };
+
+  function computeSpawnInterval(level) {
+    return Math.max(0.55, 1.8 - (level - 1) * 0.18);
+  }
 
   function resetState() {
     state.cards.forEach(c => c.el.remove());
     state.cards = [];
     state.score = 0;
+    state.roundScore = 0;
     state.lives = 3;
     state.level = 1;
     state.spawnTimer = 0;
-    state.spawnInterval = 1.8;
+    state.spawnInterval = computeSpawnInterval(1);
+    state.roundTime = ROUND_DURATION;
     state.running = false;
     state.paused = false;
     state.lastTime = 0;
@@ -733,7 +759,26 @@
     scoreEl.textContent = state.score;
     livesEl.textContent = "❤".repeat(Math.max(state.lives, 0)) || "0";
     levelEl.textContent = state.level;
+    const t = Math.max(0, Math.ceil(state.roundTime));
+    timerEl.textContent = t;
+    timerChip.classList.toggle("timer-danger", t <= 10 && state.running);
+    timerChip.classList.toggle("timer-warn", t > 10 && t <= 20 && state.running);
   }
+
+  function showOverlay(title, msg, buttons) {
+    overlayTitle.textContent = title;
+    overlayMsg.textContent = msg;
+    overlayButtons.innerHTML = "";
+    buttons.forEach(b => {
+      const btn = document.createElement("button");
+      btn.textContent = b.label;
+      if (b.variant) btn.classList.add(b.variant);
+      btn.addEventListener("click", b.onClick);
+      overlayButtons.appendChild(btn);
+    });
+    overlay.style.display = "flex";
+  }
+  function hideOverlay() { overlay.style.display = "none"; }
 
   function pickFormula() {
     let a, b;
@@ -822,10 +867,7 @@
     speak(kouJue(card.a, card.b));
 
     state.score += 10;
-    if (state.score > 0 && state.score % 50 === 0) {
-      state.level++;
-      state.spawnInterval = Math.max(0.6, 1.8 - state.level * 0.12);
-    }
+    state.roundScore += 10;
     updateStats();
   }
 
@@ -839,26 +881,78 @@
     updateStats();
     answerInput.classList.add("shake");
     setTimeout(() => answerInput.classList.remove("shake"), 400);
-    if (state.lives <= 0) gameOver();
+    if (state.lives <= 0) roundFailed();
   }
 
-  function gameOver() {
-    state.running = false;
-    overlay.style.display = "flex";
-    overlayTitle.textContent = "🎉 游戏结束";
-    overlayMsg.textContent = "战战这次得了 " + state.score + " 分，再来一次吧！";
-    overlayBtn.textContent = "再玩一次";
+  function clearCards() {
+    state.cards.forEach(c => c.el.remove());
+    state.cards = [];
   }
 
-  function startGame() {
-    overlay.style.display = "none";
-    if (state.lives <= 0) resetState();
+  function startRound() {
+    clearCards();
+    state.lives = 3;
+    state.roundScore = 0;
+    state.roundTime = ROUND_DURATION;
+    state.spawnTimer = state.spawnInterval; // first card lands quickly
+    state.spawnInterval = computeSpawnInterval(state.level);
     state.running = true;
     state.paused = false;
     state.lastTime = performance.now();
     answerInput.value = "";
     answerInput.focus();
+    btnPause.textContent = "⏸ 暂停";
+    hideOverlay();
+    updateStats();
     requestAnimationFrame(tick);
+  }
+
+  function startNewGame() {
+    resetState();
+    startRound();
+  }
+
+  function nextLevel() {
+    state.level++;
+    startRound();
+  }
+
+  function roundComplete() {
+    state.running = false;
+    clearCards();
+    updateStats();
+    showOverlay(
+      "🎉 本关通过！",
+      "本关得到 " + state.roundScore + " 分，累计 " + state.score + " 分。要继续挑战第 " + (state.level + 1) + " 关吗？",
+      [
+        { label: "▶ 进入第 " + (state.level + 1) + " 关", onClick: nextLevel },
+        { label: "🔄 再玩本关", variant: "secondary", onClick: startRound },
+        { label: "← 从头开始", variant: "tertiary", onClick: showStartScreen },
+      ]
+    );
+  }
+
+  function roundFailed() {
+    state.running = false;
+    clearCards();
+    updateStats();
+    showOverlay(
+      "💥 没接住！",
+      "本关得到 " + state.roundScore + " 分，累计 " + state.score + " 分。要再来一次吗？",
+      [
+        { label: "🔄 再玩本关", onClick: startRound },
+        { label: "← 从头开始", variant: "secondary", onClick: showStartScreen },
+      ]
+    );
+  }
+
+  function showStartScreen() {
+    resetState();
+    showOverlay(
+      "准备好了吗？",
+      "每关 1 分钟，卡片从天上掉下来，输入正确答案就会爆炸！",
+      [ { label: "▶ 开始游戏", onClick: startNewGame } ]
+    );
   }
 
   function tick(now) {
@@ -866,6 +960,14 @@
     if (state.paused) { state.lastTime = now; requestAnimationFrame(tick); return; }
     const dt = Math.min(0.05, (now - state.lastTime) / 1000);
     state.lastTime = now;
+
+    state.roundTime -= dt;
+    if (state.roundTime <= 0) {
+      state.roundTime = 0;
+      updateStats();
+      roundComplete();
+      return;
+    }
 
     state.spawnTimer += dt;
     if (state.spawnTimer >= state.spawnInterval && state.cards.length < cfg.maxConcurrent) {
@@ -878,11 +980,11 @@
       const c = state.cards[i];
       c.y += c.vy * dt;
       c.el.style.top = c.y + "px";
-      // warning glow when near bottom
       if (c.y > fh * 0.7) c.el.classList.add("glow"); else c.el.classList.remove("glow");
       if (c.y > fh) loseLife(c);
     }
 
+    updateStats();
     requestAnimationFrame(tick);
   }
 
@@ -921,24 +1023,20 @@
     }
   });
 
-  btnStart.addEventListener("click", startGame);
-  overlayBtn.addEventListener("click", startGame);
+  btnStart.addEventListener("click", () => {
+    if (state.running) return;
+    if (state.level === 1 && state.score === 0) startNewGame();
+    else startRound();
+  });
   btnPause.addEventListener("click", () => {
     if (!state.running) return;
     state.paused = !state.paused;
     btnPause.textContent = state.paused ? "▶ 继续" : "⏸ 暂停";
     if (!state.paused) { state.lastTime = performance.now(); requestAnimationFrame(tick); }
   });
-  btnReset.addEventListener("click", () => {
-    resetState();
-    overlay.style.display = "flex";
-    overlayTitle.textContent = "准备好了吗？";
-    overlayMsg.textContent = "卡片从天上掉下来，输入正确答案就会爆炸！";
-    overlayBtn.textContent = "开始游戏";
-    btnPause.textContent = "⏸ 暂停";
-  });
+  btnReset.addEventListener("click", showStartScreen);
 
-  updateStats();
+  showStartScreen();
 </script>
 </body>
 </html>
