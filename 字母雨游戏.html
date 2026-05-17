@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌧️ 字母雨 Letter Rain</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fredoka+One&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: #050a14;
+  min-height: 100vh;
+  font-family: 'Nunito', sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── canvases ── */
+#bg-canvas { position:fixed; inset:0; z-index:0; }
+#fx-canvas { position:fixed; inset:0; z-index:10; pointer-events:none; }
+
+/* ── game field ── */
+#game-field { position:fixed; inset:0; z-index:5; pointer-events:none; overflow:hidden; }
+
+/* ── HUD ── */
+#hud {
+  position:fixed; top:0; left:0; right:0; z-index:20;
+  display:flex; align-items:center; justify-content:space-around;
+  padding:14px 20px 10px;
+  background:linear-gradient(to bottom, rgba(5,10,20,0.97) 55%, transparent);
+}
+.hud-item { display:flex; flex-direction:column; align-items:center; gap:3px; }
+.hud-label {
+  font-family:'Press Start 2P', monospace; font-size:0.5rem;
+  color:rgba(255,255,255,0.35); letter-spacing:2px; text-transform:uppercase;
+}
+.hud-value { font-family:'Press Start 2P', monospace; font-size:clamp(1rem,3.5vw,1.5rem); color:#fff; }
+#score-val { color:#ffd93d; }
+#combo-val { color:#ff84ab; }
+#timer-val { color:#6bcb77; transition:color 0.3s; }
+#timer-val.urgent { color:#ff6b6b; animation:blink 0.5s step-end infinite; }
+#miss-val  { color:#ff6b6b; }
+@keyframes blink { 50%{opacity:0.2;} }
+
+/* timer bar */
+#tbar-wrap { position:fixed; top:72px; left:0; right:0; z-index:20; height:5px; background:rgba(255,255,255,0.07); }
+#tbar { height:100%; background:linear-gradient(90deg,#6bcb77,#4d96ff); transition:width 1s linear, background 0.5s; }
+#tbar.urgent { background:linear-gradient(90deg,#ff6b6b,#ffd93d); }
+
+/* ── mode bar ── */
+#mode-bar {
+  position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+  z-index:20; display:flex; gap:8px;
+}
+.mode-btn {
+  font-family:'Fredoka One',cursive; font-size:0.88rem;
+  padding:6px 16px; border:2px solid rgba(255,255,255,0.18);
+  border-radius:30px; background:rgba(255,255,255,0.05);
+  color:rgba(255,255,255,0.45); cursor:pointer; transition:all 0.2s;
+  pointer-events:all;
+}
+.mode-btn.active { border-color:#ffd93d; color:#ffd93d; background:rgba(255,217,61,0.1); }
+
+/* ── falling letter ── */
+.fl {
+  position:absolute; font-family:'Fredoka One',cursive;
+  font-size:clamp(2.8rem,7vw,5rem); line-height:1;
+  text-shadow:0 0 18px currentColor, 0 0 36px currentColor;
+  pointer-events:none; z-index:5;
+  display:flex; flex-direction:column; align-items:center; gap:1px;
+  transform-origin:center center;
+}
+.fl-letter { display:block; }
+.fl-hint   { display:block; font-size:0.52em; opacity:0.38; color:white!important; text-shadow:none; }
+
+@keyframes fall { from{top:-100px;} to{top:105vh;} }
+
+.fl.hit {
+  animation:none!important;
+  transition:transform 0.15s ease, opacity 0.15s ease;
+  transform:scale(2.8)!important;
+  opacity:0!important;
+}
+
+/* miss flash */
+.miss-flash {
+  position:fixed; inset:0; background:rgba(255,50,50,0.18);
+  z-index:15; pointer-events:none;
+  animation:mflash 0.45s ease forwards;
+}
+@keyframes mflash { to{opacity:0;} }
+
+/* score pop */
+.score-pop {
+  position:absolute; pointer-events:none; z-index:15;
+  font-family:'Press Start 2P',monospace; font-size:1rem;
+  color:#ffd93d; text-shadow:0 0 12px #ffd93d;
+  white-space:nowrap; transform:translateX(-50%);
+  animation:spop 0.9s ease forwards;
+}
+@keyframes spop {
+  0%   {transform:translateX(-50%) translateY(0) scale(1);   opacity:1;}
+  40%  {transform:translateX(-50%) translateY(-38px) scale(1.35); opacity:1;}
+  100% {transform:translateX(-50%) translateY(-75px) scale(0.8); opacity:0;}
+}
+
+/* combo flash text */
+.combo-flash {
+  position:fixed; top:28%; left:50%; transform:translate(-50%,-50%);
+  font-family:'Fredoka One',cursive; font-size:clamp(2rem,7vw,3.5rem);
+  color:#ff84ab; text-shadow:0 0 30px #ff84ab;
+  z-index:30; pointer-events:none;
+  animation:cflash 1.1s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+@keyframes cflash {
+  0%   {opacity:0;transform:translate(-50%,-50%) scale(0.3) rotate(-10deg);}
+  30%  {opacity:1;transform:translate(-50%,-50%) scale(1.1) rotate(4deg);}
+  70%  {opacity:1;transform:translate(-50%,-50%) scale(1);}
+  100% {opacity:0;transform:translate(-50%,-70%) scale(0.8);}
+}
+
+/* ── overlays ── */
+.overlay {
+  position:fixed; inset:0; z-index:50;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(5,10,20,0.88); backdrop-filter:blur(10px);
+}
+
+/* START SCREEN */
+#start-screen .card {
+  text-align:center; display:flex; flex-direction:column;
+  align-items:center; gap:18px;
+  animation:popin 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes popin { from{transform:scale(0.6);opacity:0;} to{transform:scale(1);opacity:1;} }
+
+.game-title {
+  font-family:'Press Start 2P',monospace;
+  font-size:clamp(1.2rem,4vw,2.2rem);
+  background:linear-gradient(90deg,#ff6b6b,#ffd93d,#6bcb77,#4d96ff,#c77dff);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text; background-size:200%;
+  animation:shimmer 2s linear infinite; line-height:1.5;
+}
+@keyframes shimmer { 0%{background-position:0%} 100%{background-position:200%} }
+
+.sub-text {
+  color:rgba(255,255,255,0.62); font-size:1rem; line-height:1.75;
+  max-width:350px;
+}
+.sub-text strong { color:#ffd93d; }
+
+.big-emoji { font-size:4.5rem; animation:float 2.2s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-14px);} }
+
+.diff-row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.diff-btn {
+  font-family:'Fredoka One',cursive; font-size:1rem;
+  padding:8px 20px; border:2px solid rgba(255,255,255,0.2);
+  border-radius:30px; background:transparent;
+  color:rgba(255,255,255,0.5); cursor:pointer; transition:all 0.2s;
+}
+.diff-btn.active { background:rgba(77,150,255,0.18); border-color:#4d96ff; color:#4d96ff; }
+
+.play-btn {
+  font-family:'Press Start 2P',monospace; font-size:0.95rem;
+  padding:16px 44px; background:linear-gradient(135deg,#ff6b6b,#ffd93d);
+  border:none; border-radius:50px; color:#05080f; cursor:pointer;
+  box-shadow:0 0 35px rgba(255,150,50,0.65); transition:transform 0.2s;
+  animation:pglow 1.5s ease-in-out infinite; letter-spacing:1px;
+}
+.play-btn:hover { transform:scale(1.07); }
+@keyframes pglow {
+  0%,100%{box-shadow:0 0 35px rgba(255,150,50,0.6);}
+  50%{box-shadow:0 0 65px rgba(255,150,50,1);}
+}
+
+/* RESULT SCREEN */
+#result-screen .card {
+  background:linear-gradient(145deg,rgba(18,12,45,0.99),rgba(8,18,38,0.99));
+  border:1px solid rgba(255,255,255,0.1); border-radius:24px;
+  padding:30px 34px; max-width:min(620px,96vw); width:100%;
+  display:flex; flex-direction:column; gap:18px;
+  max-height:92vh; overflow-y:auto;
+  animation:popin 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+#result-screen .card::-webkit-scrollbar { width:4px; }
+#result-screen .card::-webkit-scrollbar-track { background:transparent; }
+#result-screen .card::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); border-radius:4px; }
+
+.result-header { text-align:center; }
+.result-header h2 {
+  font-family:'Press Start 2P',monospace;
+  font-size:clamp(0.95rem,3vw,1.45rem); color:#ffd93d; margin-bottom:6px;
+}
+.result-header p { color:rgba(255,255,255,0.55); font-size:0.95rem; }
+
+.result-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.stat-box {
+  background:rgba(255,255,255,0.05); border-radius:14px;
+  padding:12px 8px; text-align:center;
+}
+.stat-box .sv {
+  font-family:'Press Start 2P',monospace; font-size:1.25rem;
+  color:white; display:block; margin-bottom:4px;
+}
+.stat-box .sl {
+  font-size:0.65rem; color:rgba(255,255,255,0.4);
+  text-transform:uppercase; letter-spacing:1px;
+}
+
+.ws-section h3 {
+  font-family:'Fredoka One',cursive; font-size:1.05rem;
+  color:rgba(255,255,255,0.8); margin-bottom:10px;
+}
+.letter-grid { display:flex; flex-wrap:wrap; gap:8px; }
+.lchip {
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:8px 12px; border-radius:12px; min-width:50px;
+}
+.lchip .lc { font-family:'Fredoka One',cursive; font-size:1.5rem; }
+.lchip .ls { font-size:0.62rem; font-weight:900; }
+.chip-miss { background:rgba(255,107,107,0.18); border:1.5px solid rgba(255,107,107,0.5); color:#ff6b6b; }
+.chip-slow { background:rgba(255,167,61,0.18);  border:1.5px solid rgba(255,167,61,0.5);  color:#ffa73d; }
+.chip-good { background:rgba(107,203,119,0.18); border:1.5px solid rgba(107,203,119,0.5); color:#6bcb77; }
+
+.weight-box {
+  background:rgba(77,150,255,0.1); border:1.5px solid rgba(77,150,255,0.3);
+  border-radius:12px; padding:11px 14px;
+  font-size:0.88rem; color:rgba(255,255,255,0.7); line-height:1.55;
+}
+.weight-box strong { color:#4d96ff; }
+
+.res-btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+.rbtn {
+  font-family:'Fredoka One',cursive; font-size:1.05rem;
+  padding:12px 28px; border:none; border-radius:40px;
+  cursor:pointer; transition:transform 0.2s;
+}
+.rbtn:hover { transform:scale(1.06); }
+.rbtn-main { background:linear-gradient(135deg,#ff6b6b,#ffd93d); color:#05080f; }
+.rbtn-sec  { background:rgba(255,255,255,0.09); border:2px solid rgba(255,255,255,0.2); color:white; }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<canvas id="fx-canvas"></canvas>
+<div id="game-field"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-item"><span class="hud-label">SCORE</span><span class="hud-value" id="score-val">0</span></div>
+  <div class="hud-item"><span class="hud-label">COMBO</span><span class="hud-value" id="combo-val">x1</span></div>
+  <div class="hud-item"><span class="hud-label">TIME</span><span class="hud-value" id="timer-val">60</span></div>
+  <div class="hud-item"><span class="hud-label">MISS</span><span class="hud-value" id="miss-val">0</span></div>
+</div>
+<div id="tbar-wrap"><div id="tbar"></div></div>
+
+<div id="mode-bar">
+  <button class="mode-btn active" onclick="setMode('both')"  id="mb-both">大+小写</button>
+  <button class="mode-btn"        onclick="setMode('upper')" id="mb-upper">大写 ABC</button>
+  <button class="mode-btn"        onclick="setMode('lower')" id="mb-lower">小写 abc</button>
+</div>
+
+<!-- ══ START SCREEN ══ -->
+<div class="overlay" id="start-screen">
+  <div class="card">
+    <div class="big-emoji">🌧️</div>
+    <div class="game-title">字母雨<br>LETTER RAIN</div>
+    <p class="sub-text">
+      字母从天而降！快速找到键盘上<br>
+      <strong>对应的键</strong>按下去 💥<br>
+      不要让字母落到地面哦！
+    </p>
+    <div class="diff-row">
+      <button class="diff-btn"        onclick="setDiff('easy')"   id="d-easy">  🐢 慢速</button>
+      <button class="diff-btn active" onclick="setDiff('normal')" id="d-normal">🐇 普通</button>
+      <button class="diff-btn"        onclick="setDiff('hard')"   id="d-hard">  🚀 快速</button>
+    </div>
+    <button class="play-btn" onclick="startGame()">▶ 开始！</button>
+    <p style="color:rgba(255,255,255,0.28);font-size:0.75rem;font-family:'Press Start 2P',monospace;line-height:1.8">
+      每轮结束自动加强弱项字母 💪
+    </p>
+  </div>
+</div>
+
+<!-- ══ RESULT SCREEN ══ -->
+<div class="overlay" id="result-screen" style="display:none">
+  <div class="card">
+    <div class="result-header">
+      <h2 id="res-title">时间到！</h2>
+      <p  id="res-sub"></p>
+    </div>
+
+    <div class="result-stats">
+      <div class="stat-box"><span class="sv" id="rs-score">0</span><span class="sl">得分</span></div>
+      <div class="stat-box"><span class="sv" id="rs-hit">0</span>  <span class="sl">命中</span></div>
+      <div class="stat-box"><span class="sv" id="rs-miss">0</span> <span class="sl">漏掉</span></div>
+      <div class="stat-box"><span class="sv" id="rs-pct">0%</span> <span class="sl">命中率</span></div>
+    </div>
+
+    <div class="ws-section" id="ws-miss" style="display:none">
+      <h3>🔴 漏掉的字母（下轮重点练）</h3>
+      <div class="letter-grid" id="grid-miss"></div>
+    </div>
+    <div class="ws-section" id="ws-slow" style="display:none">
+      <h3>🟡 反应较慢的字母</h3>
+      <div class="letter-grid" id="grid-slow"></div>
+    </div>
+    <div class="ws-section" id="ws-good" style="display:none">
+      <h3>🟢 掌握很好的字母</h3>
+      <div class="letter-grid" id="grid-good"></div>
+    </div>
+
+    <div class="weight-box" id="wbox"></div>
+
+    <div class="res-btns">
+      <button class="rbtn rbtn-main" onclick="replayWeighted()">🎯 重点练弱项</button>
+      <button class="rbtn rbtn-sec"  onclick="replayFresh()">🔄 重置再来</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCRIPT ══ -->
+<script>
+// ━━ Constants ━━
+const LETTERS  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const TOTAL_T  = 60;
+const COLORS   = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff9a3c','#ff84ab','#00d4ff','#a8ff78'];
+const DIFF_CFG = {
+  easy:   {speedMin:6,   speedMax:10,  spawnMs:1900, maxOn:5},
+  normal: {speedMin:4,   speedMax:7.5, spawnMs:1300, maxOn:7},
+  hard:   {speedMin:2.5, speedMax:5,   spawnMs:900,  maxOn:9},
+};
+const COMBO_MSGS = {3:'连击 x3 🔥', 5:'超棒！x5 ⚡', 8:'无敌！x8 👑', 12:'传说 x12 🌈'};
+const AVG_SLOW = {easy:4500, normal:3200, hard:2000};
+
+// ━━ State ━━
+let diff='normal', mode='both';
+let weights={}; LETTERS.forEach(l=>weights[l]=1);
+let rStats={};   // per-round: {hit, missed, rtimes[]}
+let score=0, combo=0, missCount=0, timeLeft=TOTAL_T;
+let gameRunning=false;
+let falling=[];  // {id,base,display,el,spawnTime,color}
+let spawnTmr=null, tickTmr=null, rafId=null, idCnt=0;
+
+// ━━ Canvas setup ━━
+const bgC=document.getElementById('bg-canvas'), bgX=bgC.getContext('2d');
+const fxC=document.getElementById('fx-canvas'), fxX=fxC.getContext('2d');
+let stars=[];
+function resize(){
+  bgC.width=fxC.width=innerWidth;
+  bgC.height=fxC.height=innerHeight;
+  drawBg();
+}
+window.addEventListener('resize',resize); resize();
+
+// ━━ Starfield ━━
+function drawBg(){
+  stars=[];
+  for(let i=0;i<130;i++) stars.push({x:Math.random()*bgC.width,y:Math.random()*bgC.height,r:Math.random()*1.7+0.3,a:Math.random()*0.8+0.2});
+  const g=bgX.createRadialGradient(bgC.width/2,bgC.height/2,0,bgC.width/2,bgC.height/2,bgC.width);
+  g.addColorStop(0,'#0d1b35'); g.addColorStop(1,'#020709');
+  bgX.fillStyle=g; bgX.fillRect(0,0,bgC.width,bgC.height);
+  stars.forEach(s=>{
+    bgX.beginPath(); bgX.arc(s.x,s.y,s.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(255,255,255,${s.a})`; bgX.fill();
+  });
+}
+
+// ━━ Particles ━━
+let parts=[];
+function explode(x,y,color){
+  for(let i=0;i<24;i++){
+    const a=Math.random()*Math.PI*2, sp=Math.random()*10+3;
+    parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-2,
+      color,sz:Math.random()*8+3,life:1,dec:0.024+Math.random()*0.018,
+      sq:Math.random()<0.45});
+  }
+  // ring
+  parts.push({ring:1,x,y,r:8,vr:14,life:1,dec:0.045,color});
+}
+function renderParts(){
+  fxX.clearRect(0,0,fxC.width,fxC.height);
+  parts=parts.filter(p=>p.life>0);
+  parts.forEach(p=>{
+    fxX.save(); fxX.globalAlpha=p.life;
+    if(p.ring){
+      fxX.strokeStyle=p.color; fxX.lineWidth=3;
+      fxX.beginPath(); fxX.arc(p.x,p.y,p.r,0,Math.PI*2); fxX.stroke();
+      p.r+=p.vr; p.life-=p.dec;
+    } else {
+      fxX.fillStyle=p.color;
+      if(p.sq){
+        fxX.translate(p.x,p.y); fxX.rotate(p.life*6);
+        fxX.fillRect(-p.sz/2,-p.sz/2,p.sz,p.sz);
+      } else {
+        fxX.beginPath(); fxX.arc(p.x,p.y,p.sz/2,0,Math.PI*2); fxX.fill();
+      }
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.38; p.life-=p.dec;
+    }
+    fxX.restore();
+  });
+}
+function loop(){
+  renderParts();
+  if(gameRunning || parts.length){
+    rafId=requestAnimationFrame(loop);
+  } else {
+    rafId=null;
+  }
+}
+
+// ━━ Speech ━━
+let enVoice=null;
+function initVoice(){
+  const vs=speechSynthesis.getVoices();
+  const pref=['Samantha','Karen','Daniel','Google US English','Microsoft Zira'];
+  enVoice=pref.reduce((f,n)=>f||vs.find(v=>v.name.includes(n)&&v.lang.startsWith('en')),null)
+    ||vs.find(v=>v.lang.startsWith('en-'))||vs[0];
+}
+speechSynthesis.onvoiceschanged=initVoice; initVoice();
+function speak(l){
+  if(!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(l.toUpperCase());
+  u.lang='en-US'; u.rate=0.85; u.pitch=1.3; u.volume=1;
+  if(enVoice) u.voice=enVoice;
+  speechSynthesis.speak(u);
+}
+
+// ━━ Audio ━━
+let aC;
+function beep(type){
+  if(!aC) aC=new(window.AudioContext||window.webkitAudioContext)();
+  const tone=(f,t,dur,vol=0.22)=>{
+    const o=aC.createOscillator(),g=aC.createGain();
+    o.connect(g); g.connect(aC.destination);
+    o.frequency.setValueAtTime(f,aC.currentTime+t);
+    g.gain.setValueAtTime(vol,aC.currentTime+t);
+    g.gain.exponentialRampToValueAtTime(0.001,aC.currentTime+t+dur);
+    o.start(aC.currentTime+t); o.stop(aC.currentTime+t+dur);
+  };
+  if(type==='hit')  { tone(440,0,0.08); tone(660,0.06,0.1); tone(880,0.12,0.3); }
+  if(type==='miss') { tone(200,0,0.12,0.18); tone(140,0.1,0.25,0.18); }
+  if(type==='combo'){ [523,659,784,1047].forEach((f,i)=>tone(f,i*0.08,0.25,0.2)); }
+}
+
+// ━━ Weighted pick ━━
+function letterColor(l){ return COLORS[l.charCodeAt(0)%COLORS.length]; }
+function pickLetter(){
+  const tot=LETTERS.reduce((s,l)=>s+weights[l],0);
+  let r=Math.random()*tot;
+  for(const l of LETTERS){ r-=weights[l]; if(r<=0) return l; }
+  return 'Z';
+}
+
+// ━━ Spawn ━━
+function spawnOne(){
+  if(!gameRunning) return;
+  const cfg=DIFF_CFG[diff];
+  if(document.querySelectorAll('.fl:not(.hit)').length>=cfg.maxOn) return;
+
+  const base=pickLetter();
+  const display= mode==='upper'? base.toUpperCase()
+               : mode==='lower'? base.toLowerCase()
+               : Math.random()<0.5? base.toUpperCase(): base.toLowerCase();
+  const color=letterColor(base);
+  const x=45+Math.random()*(innerWidth-130);
+  const dur=cfg.speedMin+Math.random()*(cfg.speedMax-cfg.speedMin);
+  const id=++idCnt;
+
+  const el=document.createElement('div');
+  el.className='fl'; el.id='fl-'+id;
+  el.style.cssText=`left:${x}px;color:${color};top:-100px;animation:fall ${dur}s linear forwards;`;
+  const hint=mode==='both'?(display===base.toUpperCase()?base.toLowerCase():base.toUpperCase()):'';
+  el.innerHTML=`<span class="fl-letter">${display}</span>${hint?`<span class="fl-hint">${hint}</span>`:''}`;
+
+  el.addEventListener('animationend',()=>{ if(!el.classList.contains('hit')) onMiss(base,el); });
+  document.getElementById('game-field').appendChild(el);
+  falling.push({id,base,display,el,spawnTime:Date.now(),color,dur});
+}
+
+// ━━ Miss ━━
+function onMiss(base,el){
+  if(!gameRunning) return;          // ignore stale animationend events
+  rStats[base].missed++;
+  missCount++;
+  document.getElementById('miss-val').textContent=missCount;
+  combo=0; document.getElementById('combo-val').textContent='x1';
+  weights[base]=Math.min(weights[base]+0.6,10);
+  el.remove();
+  falling=falling.filter(f=>f.el!==el);
+  const flash=document.createElement('div'); flash.className='miss-flash';
+  document.body.appendChild(flash); setTimeout(()=>flash.remove(),450);
+  beep('miss');
+}
+
+// ━━ Hit ━━
+function onHit(f){
+  const elapsed=(Date.now()-f.spawnTime)/1000;
+  const progress=Math.min(elapsed/f.dur,1);
+  rStats[f.base].hit++;
+  rStats[f.base].rtimes.push(elapsed*1000);
+
+  combo++;
+  const pts=10+Math.round((1-progress)*22)+Math.min(combo-1,6)*4;
+  score+=pts;
+  document.getElementById('score-val').textContent=score;
+  document.getElementById('combo-val').textContent='x'+Math.min(combo,9);
+
+  // explosion at letter position
+  const rect=f.el.getBoundingClientRect();
+  const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+  explode(cx,cy,f.color);
+
+  // score pop
+  const pop=document.createElement('div'); pop.className='score-pop';
+  pop.style.cssText=`left:${cx}px;top:${cy}px;`;
+  pop.textContent='+'+pts;
+  document.getElementById('game-field').appendChild(pop);
+  setTimeout(()=>pop.remove(),950);
+
+  // combo message
+  const msg=COMBO_MSGS[combo]; if(msg){
+    const cm=document.createElement('div'); cm.className='combo-flash'; cm.textContent=msg;
+    document.body.appendChild(cm); setTimeout(()=>cm.remove(),1150);
+  }
+
+  // animate out
+  f.el.classList.add('hit');
+  setTimeout(()=>f.el.remove(),180);
+  falling=falling.filter(x=>x!==f);
+
+  beep(combo%5===0&&combo>0?'combo':'hit');
+  speak(f.base);
+  weights[f.base]=Math.max(weights[f.base]-0.25,0.5);
+  if(!gameRunning) rafId=rafId||requestAnimationFrame(loop);
+}
+
+// ━━ Keyboard ━━
+document.addEventListener('keydown',e=>{
+  if(e.repeat) return;
+  const k=e.key.toUpperCase();
+  if(!/^[A-Z]$/.test(k)) return;
+  if(!gameRunning) return;
+
+  const matches=falling.filter(f=>f.base===k&&!f.el.classList.contains('hit'));
+  if(!matches.length){
+    // only penalise if that letter IS currently falling (wrong letter pressed)
+    const anyFalling = falling.some(f=>!f.el.classList.contains('hit'));
+    if(anyFalling) beep('miss');
+    return;
+  }
+
+  // pick the lowest (most urgent) letter
+  let best=null, bestProg=-1;
+  matches.forEach(f=>{
+    const prog=(Date.now()-f.spawnTime)/1000/f.dur;
+    if(prog>bestProg){ bestProg=prog; best=f; }
+  });
+  if(best) onHit(best);
+});
+
+// ━━ Timer ━━
+function startTick(){
+  timeLeft=TOTAL_T;
+  const bar=document.getElementById('tbar'), tv=document.getElementById('timer-val');
+  tickTmr=setInterval(()=>{
+    timeLeft--;
+    tv.textContent=timeLeft;
+    bar.style.width=(timeLeft/TOTAL_T*100)+'%';
+    if(timeLeft<=10){ tv.classList.add('urgent'); bar.classList.add('urgent'); }
+    if(timeLeft<=0) endGame();
+  },1000);
+}
+
+// ━━ Flow ━━
+function setDiff(d){
+  diff=d;
+  document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('d-'+d).classList.add('active');
+}
+function setMode(m){
+  mode=m;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('mb-'+m).classList.add('active');
+}
+
+function startGame(){
+  // ── clean up any previous session ──
+  gameRunning=false;
+  clearInterval(spawnTmr); spawnTmr=null;
+  clearInterval(tickTmr);  tickTmr=null;
+  cancelAnimationFrame(rafId); rafId=null;
+
+  document.getElementById('start-screen').style.display='none';
+  document.getElementById('result-screen').style.display='none';
+  // reset round
+  LETTERS.forEach(l=>rStats[l]={hit:0,missed:0,rtimes:[]});
+  score=0; combo=0; missCount=0; falling=[]; idCnt=0; parts=[];
+  document.getElementById('score-val').textContent='0';
+  document.getElementById('combo-val').textContent='x1';
+  document.getElementById('miss-val').textContent='0';
+  document.getElementById('timer-val').textContent=TOTAL_T;
+  document.getElementById('timer-val').classList.remove('urgent');
+  document.getElementById('tbar').classList.remove('urgent');
+  document.getElementById('tbar').style.width='100%';
+  document.getElementById('tbar').style.transition='width 1s linear';
+  document.getElementById('game-field').innerHTML='';
+  gameRunning=true;
+  spawnOne();
+  const cfg=DIFF_CFG[diff];
+  spawnTmr=setInterval(spawnOne,cfg.spawnMs);
+  startTick();
+  rafId=requestAnimationFrame(loop);
+}
+
+function endGame(){
+  if(!gameRunning) return;          // guard double-call
+  gameRunning=false;
+  clearInterval(spawnTmr); spawnTmr=null;
+  clearInterval(tickTmr);  tickTmr=null;
+  cancelAnimationFrame(rafId); rafId=null;
+  document.querySelectorAll('.fl').forEach(el=>el.remove());
+  falling=[];
+  // keep particles alive for a moment, then show results
+  setTimeout(showResults, 600);
+}
+
+function showResults(){
+  const hitTotal=LETTERS.reduce((s,l)=>s+rStats[l].hit,0);
+  const total=hitTotal+missCount;
+  const pct=total?Math.round(hitTotal/total*100):0;
+  const slowMs=AVG_SLOW[diff];
+
+  const missed=[], slow=[], good=[];
+  LETTERS.forEach(l=>{
+    const s=rStats[l], tot=s.hit+s.missed;
+    if(!tot) return;
+    if(s.missed>0){ missed.push({l,missed:s.missed,hit:s.hit}); }
+    else if(s.hit>0){
+      const avg=s.rtimes.reduce((a,b)=>a+b,0)/s.rtimes.length;
+      if(avg>slowMs) slow.push({l,avg});
+      else           good.push({l});
+    }
+  });
+
+  // update weights
+  missed.forEach(({l,missed:m})=>{ weights[l]=Math.min(weights[l]+m*1.6+1.2,10); });
+  slow.forEach(({l})=>{            weights[l]=Math.min(weights[l]+0.9,10); });
+  good.forEach(({l})=>{            weights[l]=Math.max(weights[l]-0.3,0.5); });
+
+  // fill stat boxes
+  document.getElementById('rs-score').textContent=score;
+  document.getElementById('rs-hit').textContent=hitTotal;
+  document.getElementById('rs-miss').textContent=missCount;
+  document.getElementById('rs-pct').textContent=pct+'%';
+  document.getElementById('res-title').textContent=
+    pct>=90?'🏆 太厉害了！':pct>=75?'🌟 很棒！':pct>=55?'💪 继续加油！':'🎯 再练练！';
+  document.getElementById('res-sub').textContent=`命中率 ${pct}%，共得 ${score} 分`;
+
+  function fillGrid(gridId,items,fn){
+    const g=document.getElementById(gridId); g.innerHTML='';
+    items.forEach(item=>{ const d=document.createElement('div'); d.innerHTML=fn(item); g.appendChild(d); });
+  }
+
+  const show=(id,cond)=>document.getElementById(id).style.display=cond?'':'none';
+  show('ws-miss', missed.length>0);
+  show('ws-slow', slow.length>0);
+  show('ws-good', good.length>0);
+
+  fillGrid('grid-miss',missed,({l,missed:m,hit:h})=>
+    `<div class="lchip chip-miss"><span class="lc">${l}</span><span class="ls">漏${m}次${h?'/中'+h:''}次</span></div>`);
+  fillGrid('grid-slow',slow,({l,avg})=>
+    `<div class="lchip chip-slow"><span class="lc">${l}</span><span class="ls">${(avg/1000).toFixed(1)}s</span></div>`);
+  fillGrid('grid-good',good,({l})=>
+    `<div class="lchip chip-good"><span class="lc">${l}</span><span class="ls">✓</span></div>`);
+
+  const weak=[...missed.map(x=>x.l),...slow.map(x=>x.l)];
+  document.getElementById('wbox').innerHTML = weak.length
+    ? `<strong>🎯 下一轮已加强：</strong>${weak.join('、')}<br>这些字母会更频繁出现，多练几次就熟了！`
+    : `<strong>🎉 全部掌握得很好！</strong>下一轮保持水准，继续挑战更快速度吧！`;
+
+  document.getElementById('result-screen').style.display='flex';
+  // keep rendering particles after game ends
+  if(parts.length) requestAnimationFrame(loop);
+}
+
+function replayWeighted(){ startGame(); }
+function replayFresh(){ LETTERS.forEach(l=>weights[l]=1); startGame(); }
+</script>
+</body>
+</html>
