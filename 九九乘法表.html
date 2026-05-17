@@ -388,6 +388,70 @@
     box-shadow: 0 4px 0 rgba(0,0,0,0.3);
   }
   .game-overlay button:hover { transform: translateY(-2px); }
+
+  /* ===== Game settings ===== */
+  .game-settings {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 2vw;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 0.6vh 1vw;
+    background: rgba(255,255,255,0.78);
+    border-radius: 14px;
+    margin-top: 0.6vh;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  }
+  .game-settings .setting { display: flex; align-items: center; gap: 8px; }
+  .game-settings label { font-size: 1.6vh; font-weight: bold; color: #6c5ce7; }
+  .game-settings select {
+    font-size: 1.6vh;
+    padding: 0.4vh 0.8vw;
+    border-radius: 10px;
+    border: 2px solid #a29bfe;
+    background: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    color: #2d3436;
+  }
+  .mode-btn {
+    border: 2px solid #a29bfe;
+    background: #fff;
+    color: #6c5ce7;
+    padding: 0.5vh 1.2vw;
+    border-radius: 10px;
+    font-size: 1.5vh;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .mode-btn:hover { background: #f1f0ff; }
+  .mode-btn.active { background: #6c5ce7; color: #fff; border-color: #6c5ce7; }
+  .num-chips { display: flex; gap: 5px; }
+  .num-chip {
+    width: 3.2vh;
+    height: 3.2vh;
+    border-radius: 50%;
+    border: 2px solid #a29bfe;
+    background: #fff;
+    color: #6c5ce7;
+    font-weight: 900;
+    font-size: 1.6vh;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s, background 0.15s;
+  }
+  .num-chip:hover { background: #f1f0ff; }
+  .num-chip.active {
+    background: #6c5ce7;
+    color: #fff;
+    border-color: #6c5ce7;
+    transform: scale(1.15);
+    box-shadow: 0 2px 8px rgba(108, 92, 231, 0.4);
+  }
 </style>
 </head>
 <body>
@@ -431,6 +495,26 @@
         <button id="btnStart" class="primary">▶ 开始</button>
         <button id="btnPause">⏸ 暂停</button>
         <button id="btnReset" class="danger">🔄 重玩</button>
+      </div>
+    </div>
+
+    <div class="game-settings">
+      <div class="setting">
+        <label>同屏卡片</label>
+        <select id="cfgConcurrent">
+          <option value="1">1 个</option>
+          <option value="2" selected>2 个</option>
+          <option value="3">3 个</option>
+        </select>
+      </div>
+      <div class="setting">
+        <label>范围模式</label>
+        <button id="cfgModeUpTo" class="mode-btn active">只出到 N×N</button>
+        <button id="cfgModeOnly" class="mode-btn">只出 N 的</button>
+      </div>
+      <div class="setting">
+        <label>N =</label>
+        <div class="num-chips" id="numChips"></div>
       </div>
     </div>
 
@@ -589,6 +673,36 @@
 
   const COLORS = ["#fab1a0","#ffeaa7","#a8e6cf","#81ecec","#74b9ff","#a29bfe","#fd79a8","#ffd86b","#55efc4"];
 
+  const cfg = { maxConcurrent: 2, rangeMode: 'upTo', rangeN: 9 };
+
+  const cfgConcurrent = document.getElementById("cfgConcurrent");
+  const cfgModeUpTo = document.getElementById("cfgModeUpTo");
+  const cfgModeOnly = document.getElementById("cfgModeOnly");
+  const numChips = document.getElementById("numChips");
+
+  cfgConcurrent.addEventListener("change", () => {
+    cfg.maxConcurrent = parseInt(cfgConcurrent.value, 10);
+  });
+  function setMode(m) {
+    cfg.rangeMode = m;
+    cfgModeUpTo.classList.toggle("active", m === 'upTo');
+    cfgModeOnly.classList.toggle("active", m === 'only');
+  }
+  cfgModeUpTo.addEventListener("click", () => setMode('upTo'));
+  cfgModeOnly.addEventListener("click", () => setMode('only'));
+
+  for (let i = 1; i <= 9; i++) {
+    const b = document.createElement("button");
+    b.className = "num-chip" + (i === 9 ? " active" : "");
+    b.textContent = i;
+    b.addEventListener("click", () => {
+      numChips.querySelectorAll(".num-chip").forEach(c => c.classList.remove("active"));
+      b.classList.add("active");
+      cfg.rangeN = i;
+    });
+    numChips.appendChild(b);
+  }
+
   const state = {
     running: false,
     paused: false,
@@ -621,9 +735,25 @@
     levelEl.textContent = state.level;
   }
 
+  function pickFormula() {
+    let a, b;
+    if (cfg.rangeMode === 'only') {
+      const k = 1 + Math.floor(Math.random() * 9); // 1..9
+      if (Math.random() < 0.5) { a = k; b = cfg.rangeN; }
+      else { a = cfg.rangeN; b = k; }
+    } else {
+      const N = cfg.rangeN;
+      if (N < 2) { a = 1; b = 1; }
+      else {
+        a = 2 + Math.floor(Math.random() * (N - 1));
+        b = 2 + Math.floor(Math.random() * (N - 1));
+      }
+    }
+    return { a, b };
+  }
+
   function spawnCard() {
-    const a = 2 + Math.floor(Math.random() * 8); // 2..9
-    const b = 2 + Math.floor(Math.random() * 8);
+    const { a, b } = pickFormula();
     const answer = a * b;
     const el = document.createElement("div");
     el.className = "falling-card";
@@ -738,7 +868,7 @@
     state.lastTime = now;
 
     state.spawnTimer += dt;
-    if (state.spawnTimer >= state.spawnInterval) {
+    if (state.spawnTimer >= state.spawnInterval && state.cards.length < cfg.maxConcurrent) {
       state.spawnTimer = 0;
       spawnCard();
     }
