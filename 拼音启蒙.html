@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>战战的拼音启蒙 · 声母韵母拼读</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: "Comic Sans MS", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #ffd3a5 0%, #fd9b8a 50%, #ff9a9e 100%);
+    color: #2d3436;
+  }
+  body { display: flex; flex-direction: column; padding: 0.8vh 1.5vw; }
+
+  /* ===== Tabs ===== */
+  .tabs { flex: 0 0 auto; display: flex; gap: 8px; justify-content: center; margin-bottom: 0.8vh; }
+  .tabs button {
+    border: none; background: rgba(255,255,255,0.6); color: #2d3436;
+    padding: 1vh 2.6vw; border-radius: 999px 999px 0 0;
+    font-size: 2vh; font-weight: bold; cursor: pointer;
+    box-shadow: 0 -3px 0 rgba(0,0,0,0.08) inset; transition: background 0.15s, transform 0.1s;
+  }
+  .tabs button:hover { background: rgba(255,255,255,0.85); }
+  .tabs button.active {
+    background: #fff; color: #e17055; transform: translateY(-2px);
+    box-shadow: 0 -4px 0 #ff7675 inset;
+  }
+
+  .page { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+  .page[hidden] { display: none; }
+
+  /* ===== Common header ===== */
+  .head-row {
+    flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; padding: 0 1vw;
+  }
+  h1 {
+    font-size: 2.8vh; color: #fff;
+    text-shadow: 2px 2px 0 #e17055, 4px 4px 0 rgba(0,0,0,0.1);
+    letter-spacing: 2px; line-height: 1.1;
+  }
+  .subtitle { font-size: 1.5vh; color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); margin-top: 4px; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .toolbar button {
+    border: none; background: #fff; color: #2d3436;
+    padding: 1vh 1.5vw; border-radius: 999px; font-size: 1.5vh; font-weight: bold;
+    cursor: pointer; box-shadow: 0 3px 0 rgba(0,0,0,0.15);
+    transition: transform 0.1s, box-shadow 0.1s; white-space: nowrap;
+  }
+  .toolbar button:hover { transform: translateY(-2px); box-shadow: 0 5px 0 rgba(0,0,0,0.15); }
+  .toolbar button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.15); }
+  .toolbar button.active { background: #e17055; color: #fff; }
+
+  .board-wrap {
+    flex: 1 1 auto; margin-top: 1vh; background: rgba(255,255,255,0.85);
+    border-radius: 18px; padding: 1.2vh 1vw; box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; min-height: 0;
+  }
+  footer {
+    flex: 0 0 auto; text-align: center; padding-top: 0.5vh; color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3); font-size: 1.3vh;
+  }
+  .speaking { box-shadow: 0 0 0 3px #fff, 0 6px 18px rgba(225, 112, 85, 0.7) !important; }
+
+  /* ===== 声母 / 韵母 grids ===== */
+  .pin-grid { display: grid; gap: 1vh; height: 100%; width: 100%; align-content: stretch; }
+  #shengmuGrid { grid-template-columns: repeat(8, 1fr); }
+  #yunmuGrid { grid-template-columns: repeat(8, 1fr); }
+  .pcell {
+    border-radius: 14px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; cursor: pointer; user-select: none;
+    padding: 0.4vh; position: relative; box-shadow: 0 3px 0 rgba(0,0,0,0.1);
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+  .pcell:hover { transform: scale(1.08) rotate(-1deg); box-shadow: 0 8px 16px rgba(0,0,0,0.25); z-index: 5; }
+  .ppin { font-size: 3vh; font-weight: 900; line-height: 1; font-family: "Times New Roman", serif; }
+  .pchar { font-size: 2vh; font-weight: bold; margin-top: 4px; font-family: "KaiTi","STKaiti","Microsoft YaHei",serif; }
+  /* color palettes */
+  .pc0{background:#fab1a0;color:#6c3a2a;} .pc1{background:#ffeaa7;color:#7c5e10;}
+  .pc2{background:#a8e6cf;color:#1d6b4e;} .pc3{background:#81ecec;color:#0e5454;}
+  .pc4{background:#74b9ff;color:#1e3a6b;} .pc5{background:#a29bfe;color:#2d2570;}
+  .pc6{background:#fd79a8;color:#6b1c3e;} .pc7{background:#ffd86b;color:#6b4d0a;}
+  /* 韵母分组色 */
+  .g-dan { background:#ffeaa7; color:#7c5e10; }
+  .g-fu  { background:#a8e6cf; color:#1d6b4e; }
+  .g-bi  { background:#74b9ff; color:#1e3a6b; }
+  .g-er  { background:#fd79a8; color:#6b1c3e; }
+  /* hide mode: 盖住示例字 */
+  body.pin-hide .pcell:not(.revealed) .pchar { visibility: hidden; }
+  body.pin-hide .pcell:not(.revealed)::after {
+    content: "?"; position: absolute; bottom: 4%; font-size: 1.8vh; font-weight: 900; opacity: 0.5;
+  }
+
+  /* legend */
+  .legend { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 0.6vh; }
+  .legend span { font-size: 1.4vh; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 5px; }
+  .legend i { width: 1.6vh; height: 1.6vh; border-radius: 4px; display: inline-block; }
+
+  /* ===== 拼读 blender ===== */
+  .blend-page { gap: 0.6vh; }
+  .chip-row {
+    flex: 0 0 auto; background: rgba(255,255,255,0.85); border-radius: 14px;
+    padding: 0.8vh 1vw; box-shadow: 0 4px 14px rgba(0,0,0,0.1); margin-top: 0.6vh;
+  }
+  .chip-row .row-label { font-size: 1.5vh; font-weight: bold; color: #e17055; margin-bottom: 0.4vh; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    border: 2px solid #fab1a0; background: #fff; color: #e17055;
+    min-width: 4vh; padding: 0.4vh 1vh; border-radius: 10px;
+    font-size: 2vh; font-weight: 900; cursor: pointer; font-family: "Times New Roman", serif;
+    transition: transform 0.1s, background 0.15s;
+  }
+  .chip:hover { background: #fff5f0; }
+  .chip.active { background: #e17055; color: #fff; border-color: #e17055; transform: scale(1.1); }
+  .chip.disabled { opacity: 0.28; pointer-events: none; background: #f1f2f6; border-color: #dfe6e9; color: #b2bec3; }
+  .chip.whole { border-color: #a29bfe; color: #6c5ce7; }
+  .chip.whole.active { background: #6c5ce7; color: #fff; border-color: #6c5ce7; transform: scale(1.1); }
+
+  .blend-stage {
+    flex: 1 1 auto; min-height: 0; margin-top: 0.6vh; background: rgba(255,255,255,0.85);
+    border-radius: 18px; box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.4vh; padding: 1vh;
+  }
+  .formula {
+    display: flex; align-items: center; gap: 1.5vh; font-family: "Times New Roman", serif;
+    font-size: 6vh; font-weight: 900; color: #2d3436;
+  }
+  .formula .op { color: #b2bec3; font-size: 4.5vh; }
+  .formula .slot { color: #e17055; cursor: pointer; }
+  .formula .syl { color: #0984e3; }
+  .formula .slot.empty { color: #dfe6e9; }
+  #btnBlend {
+    border: none; background: #00b894; color: #fff; font-size: 2.2vh; font-weight: bold;
+    padding: 1vh 3vw; border-radius: 999px; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.25);
+  }
+  #btnBlend:hover { transform: translateY(-2px); }
+  .tones { display: flex; gap: 2vh; }
+  .tone-cell {
+    min-width: 15vh; padding: 1.6vh 1.8vh; border-radius: 18px; background: #ffeaa7; color: #7c5e10;
+    display: flex; flex-direction: column; align-items: center; cursor: pointer;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.12); transition: transform 0.12s, box-shadow 0.12s;
+  }
+  .tone-cell:hover { transform: translateY(-4px) scale(1.06); box-shadow: 0 9px 20px rgba(0,0,0,0.22); }
+  .tone-cell .tp { font-size: 5.4vh; font-weight: 900; font-family: "Times New Roman", serif; line-height: 1; }
+  .tone-cell .tn { font-size: 1.6vh; margin-top: 7px; font-weight: bold; }
+  .tone-cell .tc { font-size: 4vh; margin-top: 5px; font-family:"KaiTi","STKaiti","Microsoft YaHei",serif; min-height: 4.4vh; font-weight: bold; }
+</style>
+</head>
+<body>
+  <nav class="tabs">
+    <button class="active" data-page="shengmuPage">🅱 声母</button>
+    <button data-page="yunmuPage">🅰 韵母</button>
+    <button data-page="blendPage">🧩 拼一拼</button>
+  </nav>
+
+  <!-- ====== 声母 ====== -->
+  <main class="page" id="shengmuPage">
+    <div class="head-row">
+      <div>
+        <h1>🅱 声母 Shēngmǔ</h1>
+        <div class="subtitle">点一下听它的呼读音（b 读"玻"）🔊</div>
+      </div>
+      <div class="toolbar">
+        <button class="btn-sound active">🔊 朗读开</button>
+        <button class="btn-hide" data-target="shengmuGrid">🙈 盖住考考我</button>
+      </div>
+    </div>
+    <div class="board-wrap"><div class="pin-grid" id="shengmuGrid"></div></div>
+    <footer>声母读得轻又短，后面跟个小尾巴帮我们读出来 💪</footer>
+  </main>
+
+  <!-- ====== 韵母 ====== -->
+  <main class="page" id="yunmuPage" hidden>
+    <div class="head-row">
+      <div>
+        <h1>🅰 韵母 Yùnmǔ</h1>
+        <div class="subtitle">点一下听它的发音（配一个例字）🔊</div>
+      </div>
+      <div class="toolbar">
+        <button class="btn-sound active">🔊 朗读开</button>
+        <button class="btn-hide" data-target="yunmuGrid">🙈 盖住考考我</button>
+      </div>
+    </div>
+    <div class="board-wrap"><div class="pin-grid" id="yunmuGrid"></div></div>
+    <div class="legend">
+      <span><i class="g-dan"></i>单韵母</span>
+      <span><i class="g-fu"></i>复韵母</span>
+      <span><i class="g-bi"></i>鼻韵母</span>
+      <span><i class="g-er"></i>特殊</span>
+    </div>
+  </main>
+
+  <!-- ====== 拼一拼 ====== -->
+  <main class="page blend-page" id="blendPage" hidden>
+    <div class="head-row">
+      <div>
+        <h1>🧩 拼一拼 Pīn yi pīn</h1>
+        <div class="subtitle">选一个声母 + 一个韵母，拼出音节，再听四声 ✨</div>
+      </div>
+      <div class="toolbar">
+        <button class="btn-sound active">🔊 朗读开</button>
+        <button id="btnResetBlend">🔄 复位</button>
+      </div>
+    </div>
+
+    <div class="chip-row">
+      <div class="row-label">声母</div>
+      <div class="chips" id="shengmuChips"></div>
+    </div>
+    <div class="chip-row">
+      <div class="row-label">韵母（选了声母后，不能拼的会变灰）</div>
+      <div class="chips" id="yunmuChips"></div>
+    </div>
+    <div class="chip-row">
+      <div class="row-label">整体认读音节（点一下直接出四声）</div>
+      <div class="chips" id="wholeChips"></div>
+    </div>
+
+    <div class="blend-stage">
+      <div class="formula">
+        <span class="slot empty" id="slotS">?</span>
+        <span class="op">+</span>
+        <span class="slot empty" id="slotY">?</span>
+        <span class="op">=</span>
+        <span class="syl" id="slotSyl">?</span>
+      </div>
+      <button id="btnBlend">🔊 拼一拼</button>
+      <div class="tones" id="toneRow"></div>
+    </div>
+  </main>
+
+<script>
+  // =========================================================
+  //  Audio layer —— 预留录音接口（中文）
+  //  录音放同目录 audio/，在 AUDIO_MAP 登记即可自动替换 TTS。
+  //  key 约定：sm:b（声母）/ ym:an（韵母）/ syll:bā（带声调音节）/ whole:zhi（整体认读）
+  // =========================================================
+  const AUDIO_DIR = "audio/";
+  const AUDIO_MAP = {
+    // "sm:b": "sm-b.mp3",
+    // "syll:bā": "ba1.mp3",
+  };
+  const _audioCache = {};
+
+  let soundOn = true;
+  let zhVoice = null;
+  function pickVoice() {
+    const voices = speechSynthesis.getVoices();
+    zhVoice =
+      voices.find(v => /zh[-_]CN/i.test(v.lang)) ||
+      voices.find(v => /^zh/i.test(v.lang)) ||
+      voices.find(v => /chinese/i.test(v.name)) || null;
+  }
+  if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+
+  function speak(text, el) {
+    if (!soundOn || !('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN';
+    if (zhVoice) u.voice = zhVoice;
+    u.rate = 0.8; u.pitch = 1.1;
+    if (el) {
+      u.onstart = () => el.classList.add('speaking');
+      u.onend = () => el.classList.remove('speaking');
+      u.onerror = () => el.classList.remove('speaking');
+    }
+    speechSynthesis.speak(u);
+  }
+  function playAudio(key, fallbackText, el) {
+    if (!soundOn) return;
+    const file = AUDIO_MAP[key];
+    if (file) {
+      let a = _audioCache[key];
+      if (!a) { a = new Audio(AUDIO_DIR + file); _audioCache[key] = a; }
+      a.currentTime = 0;
+      if (el) { el.classList.add('speaking'); a.onended = () => el.classList.remove('speaking'); }
+      a.play().catch(() => speak(fallbackText, el));
+      return;
+    }
+    speak(fallbackText, el);
+  }
+  document.addEventListener("click", function unlock() {
+    if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); }
+  }, { once: true });
+
+  // ============ Tabs ============
+  const pages = {
+    shengmuPage: document.getElementById("shengmuPage"),
+    yunmuPage: document.getElementById("yunmuPage"),
+    blendPage: document.getElementById("blendPage"),
+  };
+  const tabBtns = document.querySelectorAll(".tabs button");
+  tabBtns.forEach(btn => btn.addEventListener("click", () => {
+    tabBtns.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    Object.entries(pages).forEach(([k, el]) => el.hidden = k !== btn.dataset.page);
+  }));
+
+  // ============ shared sound buttons ============
+  const soundBtns = document.querySelectorAll(".btn-sound");
+  function syncSoundButtons() {
+    soundBtns.forEach(b => { b.classList.toggle("active", soundOn); b.textContent = soundOn ? "🔊 朗读开" : "🔇 朗读关"; });
+  }
+  soundBtns.forEach(b => b.addEventListener("click", () => {
+    soundOn = !soundOn; if (!soundOn) speechSynthesis.cancel(); syncSoundButtons();
+  }));
+
+  // ============ Data ============
+  const SHENGMU = [
+    {p:"b",ch:"玻"},{p:"p",ch:"坡"},{p:"m",ch:"摸"},{p:"f",ch:"佛"},
+    {p:"d",ch:"得"},{p:"t",ch:"特"},{p:"n",ch:"讷"},{p:"l",ch:"勒"},
+    {p:"g",ch:"哥"},{p:"k",ch:"科"},{p:"h",ch:"喝"},
+    {p:"j",ch:"鸡"},{p:"q",ch:"七"},{p:"x",ch:"西"},
+    {p:"zh",ch:"知"},{p:"ch",ch:"吃"},{p:"sh",ch:"狮"},{p:"r",ch:"日"},
+    {p:"z",ch:"资"},{p:"c",ch:"刺"},{p:"s",ch:"丝"},
+    {p:"y",ch:"衣"},{p:"w",ch:"屋"},
+  ];
+  const YUNMU = [
+    {p:"a",ch:"啊",g:"g-dan"},{p:"o",ch:"哦",g:"g-dan"},{p:"e",ch:"鹅",g:"g-dan"},
+    {p:"i",ch:"衣",g:"g-dan"},{p:"u",ch:"乌",g:"g-dan"},{p:"ü",ch:"鱼",g:"g-dan"},
+    {p:"ai",ch:"爱",g:"g-fu"},{p:"ei",ch:"诶",g:"g-fu"},{p:"ui",ch:"围",g:"g-fu"},
+    {p:"ao",ch:"袄",g:"g-fu"},{p:"ou",ch:"偶",g:"g-fu"},{p:"iu",ch:"优",g:"g-fu"},
+    {p:"ie",ch:"椰",g:"g-fu"},{p:"üe",ch:"月",g:"g-fu"},
+    {p:"an",ch:"安",g:"g-bi"},{p:"en",ch:"恩",g:"g-bi"},{p:"in",ch:"因",g:"g-bi"},
+    {p:"un",ch:"温",g:"g-bi"},{p:"ün",ch:"晕",g:"g-bi"},
+    {p:"ang",ch:"昂",g:"g-bi"},{p:"eng",ch:"鞥",g:"g-bi"},{p:"ing",ch:"鹰",g:"g-bi"},
+    {p:"ong",ch:"",g:"g-bi"},
+    {p:"er",ch:"耳",g:"g-er"},
+  ];
+  const WHOLE = [
+    {p:"zhi",ch:"知"},{p:"chi",ch:"吃"},{p:"shi",ch:"狮"},{p:"ri",ch:"日"},
+    {p:"zi",ch:"资"},{p:"ci",ch:"刺"},{p:"si",ch:"丝"},
+    {p:"yi",ch:"衣"},{p:"wu",ch:"屋"},{p:"yu",ch:"鱼"},
+    {p:"ye",ch:"椰"},{p:"yue",ch:"月"},{p:"yuan",ch:"圆"},
+    {p:"yin",ch:"因"},{p:"yun",ch:"晕"},{p:"ying",ch:"鹰"},
+  ];
+  // 音节库：base → [一声, 二声, 三声, 四声] 例字（空串=该声调无常用字）。
+  // 只列入常用音节；拼一拼里凡能选出的组合都来自这里，确保都有四声例字。
+  const SYLL_DB = {
+    // b
+    ba:["八","拔","把","爸"], bo:["波","伯","跛","播"], bai:["掰","白","百","败"],
+    bei:["杯","","北","贝"], bao:["包","雹","宝","抱"], ban:["班","","板","办"],
+    ben:["奔","","本","笨"], bang:["帮","","绑","棒"], beng:["崩","甭","绷","蹦"],
+    bi:["逼","鼻","笔","必"], bie:["憋","别","瘪",""], biao:["标","","表","鳔"],
+    bian:["边","","扁","变"], bin:["宾","","","鬓"], bing:["冰","","饼","病"], bu:["","","补","不"],
+    // p
+    pa:["趴","爬","","怕"], po:["泼","婆","叵","破"], pai:["拍","排","迫","派"],
+    pei:["呸","陪","","配"], pao:["抛","刨","跑","炮"], pou:["剖","","",""],
+    pan:["潘","盘","","盼"], pen:["喷","盆","","喷"], pang:["乓","旁","","胖"], peng:["砰","朋","捧","碰"],
+    pi:["批","皮","匹","屁"], piao:["飘","瓢","漂","票"], pie:["瞥","","撇",""],
+    pian:["偏","便","","骗"], pin:["拼","贫","品","聘"], ping:["乒","平","",""], pu:["扑","葡","普","瀑"],
+    // m
+    ma:["妈","麻","马","骂"], mo:["摸","摩","抹","墨"], mai:["","埋","买","卖"],
+    mei:["","没","美","妹"], mao:["猫","毛","卯","帽"], mou:["哞","谋","某",""],
+    man:["","蛮","满","慢"], men:["闷","门","","闷"], mang:["","忙","蟒",""],
+    meng:["蒙","盟","猛","梦"], mi:["咪","迷","米","蜜"], miao:["喵","描","秒","妙"],
+    mie:["咩","","","灭"], mian:["","棉","免","面"], min:["","民","敏",""], ming:["","名","酩","命"], mu:["","模","母","木"],
+    // f
+    fa:["发","罚","法","发"], fo:["","佛","",""], fei:["飞","肥","匪","费"],
+    fan:["翻","凡","反","饭"], fen:["分","坟","粉","份"], fang:["方","房","访","放"],
+    feng:["风","缝","讽","凤"], fu:["夫","服","府","父"], fou:["","","否",""],
+    // d
+    da:["搭","答","打","大"], de:["","得","",""], dai:["呆","","逮","带"],
+    dei:["","","得",""], dao:["刀","","导","到"], dou:["兜","","抖","豆"],
+    dan:["单","","胆","蛋"], dang:["当","","党","荡"], deng:["灯","","等","凳"],
+    di:["低","敌","底","弟"], diao:["刁","","","钓"], die:["跌","叠","",""],
+    diu:["丢","","",""], dian:["颠","","点","电"], ding:["丁","","顶","定"],
+    du:["督","毒","堵","度"], duo:["多","夺","朵","剁"], dui:["堆","","怼","对"],
+    dun:["蹲","","盹","顿"], duan:["端","","短","断"], dong:["东","","懂","洞"],
+    // t
+    ta:["他","","塔","踏"], te:["","","","特"], tai:["胎","台","","太"],
+    tao:["掏","逃","讨","套"], tou:["偷","头","","透"], tan:["摊","谈","坦","炭"],
+    tang:["汤","糖","躺","烫"], teng:["","疼","",""], ti:["梯","题","体","替"],
+    tian:["天","田","舔",""], tie:["贴","","铁","帖"], ting:["听","停","挺",""],
+    tu:["突","图","土","兔"], tuo:["拖","驼","妥","唾"], tui:["推","颓","腿","退"],
+    tun:["吞","屯","",""], tuan:["湍","团","",""], tong:["通","同","桶","痛"],
+    // n
+    na:["那","拿","哪","那"], nai:["","","奶","耐"], nao:["孬","挠","脑","闹"],
+    nei:["","","","内"], nan:["","男","腩","难"], nen:["","","","嫩"],
+    neng:["","能","",""], ni:["妮","泥","你","腻"], niao:["","","鸟","尿"],
+    nie:["捏","","","聂"], nian:["蔫","年","捻","念"], nin:["","您","",""],
+    ning:["","宁","拧","泞"], niu:["妞","牛","扭","拗"], nu:["","奴","努","怒"],
+    nuo:["","挪","","糯"], nong:["哝","农","","弄"], nü:["","","女",""],
+    // l
+    la:["拉","","喇","辣"], le:["","","","乐"], lai:["","来","","赖"],
+    lao:["捞","劳","老","涝"], lou:["搂","楼","搂","漏"], lan:["","兰","懒","烂"],
+    lang:["","狼","朗","浪"], leng:["","棱","冷","愣"], li:["","梨","里","力"],
+    lia:["","俩","",""], liao:["撩","辽","了","料"], lie:["","","咧","列"],
+    lian:["","连","脸","练"], lin:["拎","林","凛","吝"], ling:["","铃","岭","另"],
+    liu:["溜","流","柳","六"], lu:["撸","炉","鲁","路"], luo:["啰","罗","裸","落"],
+    luan:["","峦","卵","乱"], lun:["抡","轮","","论"], long:["","龙","垄","弄"],
+    lü:["","驴","吕","绿"], lüe:["","","","略"],
+    // g
+    ga:["嘎","","","尬"], ge:["哥","格","葛","个"], gai:["该","","改","盖"],
+    gei:["","","给",""], gao:["高","","搞","告"], gou:["勾","","狗","够"],
+    gan:["干","","赶","干"], gen:["根","","",""], gang:["刚","","港","杠"],
+    geng:["耕","","梗","更"], gu:["姑","","谷","顾"], gua:["瓜","","寡","挂"],
+    guo:["锅","国","果","过"], guai:["乖","","拐","怪"], gui:["龟","","鬼","贵"],
+    guan:["关","","管","惯"], gun:["","","滚","棍"], guang:["光","","广","逛"], gong:["工","","巩","共"],
+    // k
+    ka:["咖","","卡",""], ke:["科","咳","渴","课"], kai:["开","","凯",""],
+    kao:["","","考","靠"], kou:["抠","","口","扣"], kan:["刊","","砍","看"],
+    ken:["","","肯",""], kang:["糠","扛","","抗"], keng:["坑","","",""],
+    ku:["哭","","苦","裤"], kua:["夸","","垮","跨"], kuo:["","","","阔"],
+    kuai:["","","","快"], kui:["亏","葵","","愧"], kuan:["宽","","款",""],
+    kun:["昆","","捆","困"], kuang:["筐","狂","","矿"], kong:["空","","孔","控"],
+    // h
+    ha:["哈","蛤","",""], he:["喝","河","","贺"], hai:["嗨","孩","海","害"],
+    hei:["嘿","","",""], hao:["蒿","豪","好","号"], hou:["","猴","吼","后"],
+    han:["憨","寒","喊","汗"], hen:["","痕","很","恨"], hang:["夯","行","",""],
+    heng:["哼","横","","横"], hu:["呼","壶","虎","户"], hua:["花","华","","画"],
+    huo:["","活","火","货"], huai:["","怀","","坏"], hui:["灰","回","悔","会"],
+    huan:["欢","还","缓","换"], hun:["昏","浑","","混"], huang:["慌","黄","谎","晃"], hong:["轰","红","哄","哄"],
+    // j
+    ji:["鸡","急","几","记"], jia:["家","夹","假","价"], jie:["街","节","姐","界"],
+    jiao:["交","嚼","脚","叫"], jiu:["究","","九","旧"], jian:["尖","","简","见"],
+    jin:["今","","紧","近"], jiang:["江","","讲","匠"], jing:["京","","景","静"],
+    jiong:["","","窘",""], ju:["居","菊","举","巨"], jue:["撅","决","","倔"],
+    juan:["捐","","卷","倦"], jun:["军","","","菌"],
+    // q
+    qi:["七","齐","起","气"], qia:["掐","","卡","恰"], qie:["切","茄","且","窃"],
+    qiao:["敲","桥","巧","翘"], qiu:["秋","求","糗",""], qian:["千","钱","浅","欠"],
+    qin:["亲","琴","寝","沁"], qiang:["枪","墙","抢","呛"], qing:["青","情","请","庆"],
+    qiong:["","穷","",""], qu:["区","渠","取","去"], que:["缺","瘸","","确"],
+    quan:["圈","全","犬","劝"], qun:["","群","",""],
+    // x
+    xi:["西","习","洗","系"], xia:["虾","侠","","下"], xie:["歇","鞋","写","谢"],
+    xiao:["消","","小","笑"], xiu:["休","","朽","绣"], xian:["先","闲","显","现"],
+    xin:["心","","","信"], xiang:["香","详","想","向"], xing:["星","行","醒","姓"],
+    xiong:["凶","熊","",""], xu:["需","徐","许","序"], xue:["靴","学","雪","血"],
+    xuan:["宣","旋","选","炫"], xun:["勋","寻","","训"],
+    // zh
+    zhi:["知","直","纸","治"], zha:["渣","炸","眨","炸"], zhe:["遮","折","者","这"],
+    zhai:["摘","宅","窄","债"], zhao:["招","着","找","照"], zhou:["周","轴","肘","皱"],
+    zhan:["沾","","展","站"], zhen:["针","","枕","镇"], zhang:["张","","长","丈"],
+    zheng:["争","","整","正"], zhu:["猪","竹","主","住"], zhua:["抓","","爪",""],
+    zhuo:["桌","啄","",""], zhui:["追","","","坠"], zhuan:["砖","","转","赚"],
+    zhun:["","","准",""], zhuang:["装","","","壮"], zhong:["中","","种","重"],
+    // ch
+    chi:["吃","迟","尺","翅"], cha:["插","茶","","岔"], che:["车","","扯","彻"],
+    chai:["拆","柴","",""], chao:["超","潮","炒",""], chou:["抽","愁","丑","臭"],
+    chan:["搀","馋","铲","颤"], chen:["嗔","沉","","趁"], chang:["昌","常","厂","唱"],
+    cheng:["称","成","逞","秤"], chu:["出","除","础","处"], chui:["吹","锤","",""],
+    chuan:["川","船","喘","串"], chun:["春","纯","蠢",""], chuang:["窗","床","闯","创"], chong:["冲","虫","宠",""],
+    // sh
+    shi:["狮","十","使","是"], sha:["沙","啥","傻","厦"], she:["奢","蛇","舍","设"],
+    shai:["筛","","","晒"], shao:["烧","勺","少","少"], shou:["收","","手","瘦"],
+    shan:["山","","闪","扇"], shen:["深","神","审","甚"], shang:["商","","赏","上"],
+    sheng:["生","绳","省","圣"], shu:["书","熟","鼠","树"], shua:["刷","","耍",""],
+    shuo:["说","","","硕"], shuai:["摔","","甩","帅"], shui:["","谁","水","睡"],
+    shuan:["拴","","","涮"], shuang:["双","","爽",""], shun:["","","吮","顺"],
+    // r
+    ri:["","","","日"], re:["","","惹","热"], rao:["","饶","扰","绕"],
+    rou:["","柔","","肉"], ran:["","然","染",""], ren:["","人","忍","认"],
+    rang:["嚷","瓤","嚷","让"], reng:["扔","仍","",""], ru:["","如","乳","入"],
+    ruo:["","","","弱"], rui:["","","蕊","瑞"], ruan:["","","软",""], run:["","","","润"], rong:["","容","冗",""],
+    // z
+    zi:["资","","紫","字"], za:["扎","杂","咋",""], ze:["","责","","仄"],
+    zai:["栽","","载","在"], zao:["糟","凿","早","造"], zou:["邹","","走","奏"],
+    zan:["簪","咱","攒","赞"], zang:["脏","","","葬"], zeng:["增","","","赠"],
+    zu:["租","足","祖",""], zuo:["作","昨","左","坐"], zui:["","","嘴","最"],
+    zuan:["钻","","","攥"], zun:["尊","","",""], zong:["宗","","总","纵"],
+    // c
+    ci:["疵","词","此","次"], ca:["擦","","",""], ce:["","","","册"],
+    cai:["猜","才","彩","菜"], cao:["操","曹","草",""], cou:["","","","凑"],
+    can:["餐","残","惨","灿"], cang:["仓","藏","",""], ceng:["","层","","蹭"],
+    cu:["粗","","","醋"], cuo:["搓","","","错"], cui:["催","","","脆"],
+    cun:["村","存","忖","寸"], cong:["葱","从","",""],
+    // s
+    si:["丝","","死","四"], sa:["撒","","洒","飒"], se:["","","","色"],
+    sai:["腮","","","赛"], sao:["骚","","嫂","扫"], sou:["搜","","擞","嗽"],
+    san:["三","","伞","散"], sang:["桑","","嗓","丧"], seng:["僧","","",""],
+    su:["苏","俗","","诉"], suo:["缩","","所",""], sui:["虽","随","髓","岁"],
+    suan:["酸","","","算"], sun:["孙","","损",""], song:["松","","耸","送"],
+    // y / w（零声母）
+    ya:["鸭","牙","哑","亚"], ye:["椰","爷","也","叶"], yao:["腰","摇","咬","药"],
+    you:["优","游","有","又"], yan:["烟","严","眼","燕"], yin:["因","银","引","印"],
+    yang:["央","羊","养","样"], ying:["英","迎","影","硬"], yong:["拥","","永","用"],
+    yi:["衣","姨","椅","易"], yu:["淤","鱼","雨","玉"], yue:["约","","","月"],
+    yuan:["冤","圆","远","愿"], yun:["晕","云","允","运"],
+    wa:["挖","娃","瓦","袜"], wo:["窝","","我","握"], wai:["歪","","崴","外"],
+    wei:["威","围","伟","位"], wan:["弯","玩","晚","万"], wen:["温","文","稳","问"],
+    wang:["汪","王","网","忘"], weng:["翁","","","瓮"], wu:["屋","无","五","雾"],
+  };
+
+  // ============ build 声母/韵母 grids ============
+  function buildGrid(container, items, withGroupColor) {
+    items.forEach((e, i) => {
+      const cell = document.createElement("div");
+      cell.className = "pcell " + (withGroupColor ? e.g : ("pc" + (i % 8)));
+      cell.innerHTML = '<div class="ppin">' + e.p + '</div>' +
+                       '<div class="pchar">' + (e.ch || "—") + '</div>';
+      const key = (container.id === "shengmuGrid" ? "sm:" : "ym:") + e.p;
+      cell.addEventListener("click", () => {
+        if (document.body.classList.contains("pin-hide")) {
+          if (cell.classList.contains("revealed")) { cell.classList.remove("revealed"); return; }
+          cell.classList.add("revealed");
+        }
+        playAudio(key, e.ch || e.p, cell);
+      });
+      container.appendChild(cell);
+    });
+  }
+  buildGrid(document.getElementById("shengmuGrid"), SHENGMU, false);
+  buildGrid(document.getElementById("yunmuGrid"), YUNMU, true);
+
+  // ============ cover toggles ============
+  document.querySelectorAll(".btn-hide").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const hidden = document.body.classList.toggle("pin-hide");
+      document.querySelectorAll(".btn-hide").forEach(b => {
+        b.classList.toggle("active", hidden);
+        b.textContent = hidden ? "👀 全部显示" : "🙈 盖住考考我";
+      });
+      document.querySelectorAll(".pcell.revealed").forEach(c => c.classList.remove("revealed"));
+    });
+  });
+
+  // ============ 拼一拼 blender ============
+  // 声调标注：a o e 优先，其次 iu 标 u、ui 标 i，再其次单个 i/u/ü
+  const TONE_VOWELS = { a:"āáǎà", o:"ōóǒò", e:"ēéěè", i:"īíǐì", u:"ūúǔù", "ü":"ǖǘǚǜ" };
+  function toneMark(base, t) {
+    base = base.replace(/v/g, "ü");
+    let v = null, idx = -1;
+    for (const x of ["a","o","e"]) { if (base.includes(x)) { v = x; idx = base.indexOf(x); break; } }
+    if (v === null) {
+      if (base.includes("iu")) { v = "u"; idx = base.indexOf("u"); }
+      else if (base.includes("ui")) { v = "i"; idx = base.indexOf("i"); }
+      else { for (const x of ["i","u","ü"]) { if (base.includes(x)) { v = x; idx = base.indexOf(x); break; } } }
+    }
+    if (v === null) return base;
+    return base.slice(0, idx) + TONE_VOWELS[v][t] + base.slice(idx + v.length);
+  }
+  // j/q/x/y + ü 写作 u（标准拼音规则）
+  function makeBase(s, y) {
+    let base = s + y;
+    if (["j","q","x","y"].includes(s)) base = base.replace("ü", "u");
+    return base;
+  }
+  function hasSyll(base) { return Object.prototype.hasOwnProperty.call(SYLL_DB, base); }
+
+  const sel = { s:null, sCh:null, y:null, yCh:null };
+  const slotS = document.getElementById("slotS");
+  const slotY = document.getElementById("slotY");
+  const slotSyl = document.getElementById("slotSyl");
+  const toneRow = document.getElementById("toneRow");
+  const TONE_NAMES = ["一声","二声","三声","四声"];
+  const smBox = document.getElementById("shengmuChips");
+  const ymBox = document.getElementById("yunmuChips");
+  const wholeBox = document.getElementById("wholeChips");
+
+  // 声母 chips
+  SHENGMU.forEach(e => {
+    const c = document.createElement("button");
+    c.className = "chip"; c.textContent = e.p; c.dataset.p = e.p;
+    c.addEventListener("click", () => {
+      if (c.classList.contains("disabled")) return;
+      smBox.querySelectorAll(".chip").forEach(x => x.classList.remove("active"));
+      c.classList.add("active");
+      sel.s = e.p; sel.sCh = e.ch;
+      slotS.textContent = e.p; slotS.classList.remove("empty");
+      clearWhole();
+      playAudio("sm:" + e.p, e.ch, c);
+      refreshAvail();
+      tryBuild();
+    });
+    smBox.appendChild(c);
+  });
+  // 韵母 chips
+  YUNMU.forEach(e => {
+    const c = document.createElement("button");
+    c.className = "chip"; c.textContent = e.p; c.dataset.p = e.p;
+    c.addEventListener("click", () => {
+      if (c.classList.contains("disabled")) return;
+      ymBox.querySelectorAll(".chip").forEach(x => x.classList.remove("active"));
+      c.classList.add("active");
+      sel.y = e.p; sel.yCh = e.ch;
+      slotY.textContent = e.p; slotY.classList.remove("empty");
+      clearWhole();
+      playAudio("ym:" + e.p, e.ch || e.p, c);
+      refreshAvail();
+      tryBuild();
+    });
+    ymBox.appendChild(c);
+  });
+  // 整体认读音节 chips（点一下直接出四声）
+  WHOLE.forEach(e => {
+    const c = document.createElement("button");
+    c.className = "chip whole"; c.textContent = e.p; c.dataset.p = e.p;
+    c.addEventListener("click", () => {
+      wholeBox.querySelectorAll(".chip").forEach(x => x.classList.remove("active"));
+      c.classList.add("active");
+      sel.s = sel.y = sel.sCh = sel.yCh = null;
+      smBox.querySelectorAll(".chip").forEach(x => x.classList.remove("active","disabled"));
+      ymBox.querySelectorAll(".chip").forEach(x => x.classList.remove("active","disabled"));
+      slotS.textContent = "整"; slotY.textContent = "体";
+      slotS.classList.remove("empty"); slotY.classList.remove("empty");
+      showTones(e.p);
+    });
+    wholeBox.appendChild(c);
+  });
+
+  function clearWhole() { wholeBox.querySelectorAll(".chip").forEach(x => x.classList.remove("active")); }
+
+  // 选了声母 → 灰掉不能拼的韵母；选了韵母 → 灰掉不能拼的声母
+  function refreshAvail() {
+    ymBox.querySelectorAll(".chip").forEach(ch => {
+      const ok = !sel.s || hasSyll(makeBase(sel.s, ch.dataset.p));
+      ch.classList.toggle("disabled", !ok);
+    });
+    smBox.querySelectorAll(".chip").forEach(ch => {
+      const ok = !sel.y || hasSyll(makeBase(ch.dataset.p, sel.y));
+      ch.classList.toggle("disabled", !ok);
+    });
+    if (sel.s && sel.y && !hasSyll(makeBase(sel.s, sel.y))) {
+      sel.y = sel.yCh = null;
+      ymBox.querySelectorAll(".chip").forEach(x => x.classList.remove("active"));
+      slotY.textContent = "?"; slotY.classList.add("empty");
+      refreshAvail();
+    }
+  }
+
+  function tryBuild() {
+    if (sel.s && sel.y) showTones(makeBase(sel.s, sel.y));
+    else { slotSyl.textContent = "?"; toneRow.innerHTML = ""; }
+  }
+
+  function showTones(base) {
+    slotSyl.textContent = base;
+    toneRow.innerHTML = "";
+    const chars = SYLL_DB[base] || ["","","",""];
+    for (let t = 0; t < 4; t++) {
+      const toned = toneMark(base, t);
+      const ch = chars[t] || "";
+      const cell = document.createElement("div");
+      cell.className = "tone-cell";
+      cell.innerHTML = '<div class="tp">' + toned + '</div>' +
+                       '<div class="tn">' + TONE_NAMES[t] + '</div>' +
+                       '<div class="tc">' + (ch || "·") + '</div>';
+      cell.addEventListener("click", () => playAudio("syll:" + toned, ch || toned, cell));
+      toneRow.appendChild(cell);
+    }
+  }
+
+  // 拼一拼：声母字 → 韵母字 → 整音节，顺序读
+  document.getElementById("btnBlend").addEventListener("click", () => {
+    const base = slotSyl.textContent;
+    if (!base || base === "?") { speak("先选一个声母和一个韵母吧"); return; }
+    const seq = [];
+    if (sel.sCh) seq.push(sel.sCh);
+    if (sel.yCh) seq.push(sel.yCh);
+    const chars = SYLL_DB[base] || [];
+    let whole = null;
+    for (let t = 0; t < 4; t++) { if (chars[t]) { whole = chars[t]; break; } }
+    seq.push(whole || toneMark(base, 0));
+    let i = 0;
+    (function next() {
+      if (i >= seq.length) return;
+      speak(seq[i++]);
+      setTimeout(next, 750);
+    })();
+  });
+
+  // 复位
+  function resetBlend() {
+    sel.s = sel.y = sel.sCh = sel.yCh = null;
+    [smBox, ymBox, wholeBox].forEach(b => b.querySelectorAll(".chip").forEach(x => x.classList.remove("active","disabled")));
+    slotS.textContent = "?"; slotY.textContent = "?"; slotSyl.textContent = "?";
+    slotS.classList.add("empty"); slotY.classList.add("empty");
+    toneRow.innerHTML = "";
+  }
+  document.getElementById("btnResetBlend").addEventListener("click", resetBlend);
+</script>
+</body>
+</html>
