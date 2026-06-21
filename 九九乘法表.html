@@ -192,6 +192,99 @@
     font-size: 1.3vh;
   }
 
+  /* ===== Grid page (12×12 方阵) ===== */
+  .grid-wrap {
+    flex: 1 1 auto;
+    margin-top: 1vh;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 18px;
+    padding: 1vh 1vw;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+  }
+  .square-grid {
+    display: grid;
+    grid-template-columns: repeat(13, 1fr);
+    grid-template-rows: repeat(13, 1fr);
+    gap: 0.35vh;
+    height: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: 100%;
+  }
+  .gcell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 1.9vh;
+    font-weight: 700;
+    user-select: none;
+    background: #fef9ef;
+    color: #2d3436;
+    transition: transform 0.08s, box-shadow 0.1s, filter 0.1s;
+  }
+  .gcell.head {
+    background: #6c5ce7;
+    color: #fff;
+    font-weight: 900;
+    cursor: pointer;
+  }
+  .gcell.corner {
+    background: #2d3436;
+    color: #ffd86b;
+    font-size: 2.4vh;
+    font-weight: 900;
+  }
+  .gcell.body { cursor: pointer; position: relative; }
+  .gcell.body:hover {
+    transform: scale(1.18);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+    z-index: 5;
+  }
+  /* row / column highlight */
+  .gcell.hl-line { filter: brightness(0.92); box-shadow: inset 0 0 0 2px #fd79a8; }
+  .gcell.head.hl-line { background: #fd79a8; }
+  .gcell.hl-cross {
+    background: #ffd86b !important;
+    color: #6b4d0a !important;
+    box-shadow: inset 0 0 0 2px #e17055;
+  }
+  .gcell.speaking { box-shadow: 0 0 0 3px #fff, 0 6px 18px rgba(253, 121, 168, 0.7); }
+  /* hide mode: cover every answer with a "?" until clicked */
+  body.grid-hide .gcell.body:not(.revealed)::after {
+    content: "?";
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    background: #dfe6e9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2vh;
+    font-weight: 900;
+    color: #95a5a6;
+  }
+  body.grid-hide .gcell.body.revealed {
+    animation: flipReveal 0.4s ease-out;
+  }
+  @keyframes flipReveal {
+    0% { transform: rotateY(90deg) scale(1.1); }
+    100% { transform: rotateY(0) scale(1); }
+  }
+  /* color heat (diagonal-friendly palette by product size) */
+  body:not(.grid-plain) .gcell.body.p0 { background: #fbe6dd; }
+  body:not(.grid-plain) .gcell.body.p1 { background: #ffe3b3; }
+  body:not(.grid-plain) .gcell.body.p2 { background: #d2f5c8; }
+  body:not(.grid-plain) .gcell.body.p3 { background: #a8e6cf; }
+  body:not(.grid-plain) .gcell.body.p4 { background: #8fd9e8; }
+  body:not(.grid-plain) .gcell.body.p5 { background: #74b9ff; color: #1e3a6b; }
+  body:not(.grid-plain) .gcell.body.p6 { background: #a29bfe; color: #2d2570; }
+  body:not(.grid-plain) .gcell.body.p7 { background: #fd79a8; color: #6b1c3e; }
+
   /* ===== Game page ===== */
   .game-header {
     flex: 0 0 auto;
@@ -469,6 +562,7 @@
 <body>
   <nav class="tabs">
     <button id="tabLearn" class="active" data-page="learnPage">📖 学习表</button>
+    <button id="tabGrid" data-page="gridPage">🔢 百数板</button>
     <button id="tabGame" data-page="gamePage">🎮 口诀游戏</button>
   </nav>
 
@@ -492,6 +586,27 @@
     </div>
 
     <footer>点卡片读口诀，慢慢就记住啦 💪</footer>
+  </main>
+
+  <!-- ====== Grid page (12×12 百数板) ====== -->
+  <main class="page" id="gridPage" hidden>
+    <div class="learn-header">
+      <div class="title-block">
+        <h1>🔢 12×12 乘法方阵</h1>
+        <div class="subtitle">横一行、竖一列，交叉的格子就是答案 ✨</div>
+      </div>
+      <div class="toolbar">
+        <button id="btnGridSound" class="active">🔊 朗读开</button>
+        <button id="btnGridColor" class="active">🌈 彩色</button>
+        <button id="btnGridHide">🙈 盖住考考我</button>
+      </div>
+    </div>
+
+    <div class="grid-wrap">
+      <div class="square-grid" id="squareGrid"></div>
+    </div>
+
+    <footer>把鼠标移到格子上，会高亮所在的行和列；点一下读出算式 🔊</footer>
   </main>
 
   <!-- ====== Game page ====== -->
@@ -604,7 +719,11 @@
   }, { once: true });
 
   // ============ Tabs ============
-  const pages = { learnPage: document.getElementById("learnPage"), gamePage: document.getElementById("gamePage") };
+  const pages = {
+    learnPage: document.getElementById("learnPage"),
+    gridPage: document.getElementById("gridPage"),
+    gamePage: document.getElementById("gamePage"),
+  };
   const tabBtns = document.querySelectorAll(".tabs button");
   tabBtns.forEach(btn => {
     btn.addEventListener("click", () => {
@@ -651,9 +770,8 @@
 
   btnSound.addEventListener("click", () => {
     soundOn = !soundOn;
-    btnSound.classList.toggle("active", soundOn);
-    btnSound.textContent = soundOn ? "🔊 朗读开" : "🔇 朗读关";
     if (!soundOn) speechSynthesis.cancel();
+    syncSoundButtons();
   });
   btnShow.addEventListener("click", () => {
     document.body.classList.remove("hide-mode");
@@ -668,6 +786,111 @@
   btnRevealAll.addEventListener("click", () => {
     if (!document.body.classList.contains("hide-mode")) return;
     document.querySelectorAll(".cell").forEach(c => c.classList.add("revealed"));
+  });
+
+  // ============ Grid (12×12 百数板) ============
+  function numToCn(n) {
+    if (n < 10) return chineseDigits[n];
+    if (n < 20) return "十" + (n % 10 === 0 ? "" : chineseDigits[n % 10]);
+    if (n < 100) {
+      const t = Math.floor(n / 10), o = n % 10;
+      return chineseDigits[t] + "十" + (o === 0 ? "" : chineseDigits[o]);
+    }
+    const h = Math.floor(n / 100), rem = n % 100;
+    let s = chineseDigits[h] + "百";
+    if (rem === 0) return s;
+    if (rem < 10) return s + "零" + chineseDigits[rem];
+    return s + numToCn(rem);
+  }
+  function readFormula(a, b) {
+    if (a <= 9 && b <= 9) return kouJue(a, b);
+    return numToCn(a) + "乘" + numToCn(b) + "等于" + numToCn(a * b);
+  }
+
+  const squareGrid = document.getElementById("squareGrid");
+  const GRID_N = 12;
+
+  for (let r = 0; r <= GRID_N; r++) {
+    for (let c = 0; c <= GRID_N; c++) {
+      const cell = document.createElement("div");
+      cell.className = "gcell";
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      if (r === 0 && c === 0) {
+        cell.classList.add("corner");
+        cell.textContent = "×";
+      } else if (r === 0 || c === 0) {
+        cell.classList.add("head");
+        cell.textContent = r === 0 ? c : r;
+      } else {
+        const prod = r * c;
+        cell.classList.add("body", "p" + Math.min(7, Math.floor(prod / 18)));
+        cell.textContent = prod;
+        cell.dataset.a = r;
+        cell.dataset.b = c;
+      }
+      squareGrid.appendChild(cell);
+    }
+  }
+
+  function clearGridHighlight() {
+    squareGrid.querySelectorAll(".hl-line, .hl-cross").forEach(el => {
+      el.classList.remove("hl-line", "hl-cross");
+    });
+  }
+  function highlight(r, c) {
+    clearGridHighlight();
+    squareGrid.querySelectorAll(".gcell").forEach(el => {
+      const er = +el.dataset.row, ec = +el.dataset.col;
+      if (er === r && ec === c) el.classList.add("hl-cross");
+      else if (er === r || ec === c) el.classList.add("hl-line");
+    });
+  }
+
+  squareGrid.addEventListener("mouseover", (e) => {
+    const cell = e.target.closest(".gcell");
+    if (!cell || cell.classList.contains("corner")) return;
+    highlight(+cell.dataset.row, +cell.dataset.col);
+  });
+  squareGrid.addEventListener("mouseleave", clearGridHighlight);
+  squareGrid.addEventListener("click", (e) => {
+    const cell = e.target.closest(".gcell.body");
+    if (!cell) return;
+    // 遮盖模式下，已翻开的格子再点一下盖回去（不发音）
+    if (document.body.classList.contains("grid-hide") && cell.classList.contains("revealed")) {
+      cell.classList.remove("revealed");
+      return;
+    }
+    cell.classList.add("revealed");
+    const a = +cell.dataset.a, b = +cell.dataset.b;
+    speak(readFormula(a, b), cell);
+  });
+
+  const btnGridSound = document.getElementById("btnGridSound");
+  const btnGridColor = document.getElementById("btnGridColor");
+  function syncSoundButtons() {
+    btnSound.classList.toggle("active", soundOn);
+    btnSound.textContent = soundOn ? "🔊 朗读开" : "🔇 朗读关";
+    btnGridSound.classList.toggle("active", soundOn);
+    btnGridSound.textContent = soundOn ? "🔊 朗读开" : "🔇 朗读关";
+  }
+  btnGridSound.addEventListener("click", () => {
+    soundOn = !soundOn;
+    if (!soundOn) speechSynthesis.cancel();
+    syncSoundButtons();
+  });
+  btnGridColor.addEventListener("click", () => {
+    const plain = document.body.classList.toggle("grid-plain");
+    btnGridColor.classList.toggle("active", !plain);
+    btnGridColor.textContent = plain ? "⬜ 朴素" : "🌈 彩色";
+  });
+  const btnGridHide = document.getElementById("btnGridHide");
+  btnGridHide.addEventListener("click", () => {
+    const hidden = document.body.classList.toggle("grid-hide");
+    btnGridHide.classList.toggle("active", hidden);
+    btnGridHide.textContent = hidden ? "👀 全部显示" : "🙈 盖住考考我";
+    // re-cover everything when (re)entering hide mode, clear when exiting
+    squareGrid.querySelectorAll(".gcell.body.revealed").forEach(c => c.classList.remove("revealed"));
   });
 
   // ============ Game ============
