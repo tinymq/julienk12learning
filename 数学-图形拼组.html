@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🧩 图形拼组</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body{ overscroll-behavior:none; }
+body {
+  min-height:100vh;
+  background: linear-gradient(160deg,#e8f4fd 0%,#fce4f5 40%,#e8fce8 80%,#fff9e6 100%);
+  font-family:'Nunito',sans-serif;
+  user-select:none; -webkit-user-select:none; overflow-x:hidden; color:#334155;
+  touch-action:manipulation;
+}
+
+#topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 18px; gap:8px; flex-wrap:wrap;
+  background:rgba(255,255,255,0.75); backdrop-filter:blur(14px);
+  border-bottom:2px solid rgba(255,255,255,0.9);
+  position:sticky; top:0; z-index:100;
+}
+.logo {
+  font-family:'Fredoka One',cursive; font-size:1.4rem;
+  background:linear-gradient(90deg,#f97316,#ec4899,#8b5cf6,#3b82f6);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text; background-size:300%; white-space:nowrap;
+  animation:shimmer 3s linear infinite;
+}
+@keyframes shimmer{0%{background-position:0%}100%{background-position:300%}}
+.tabs { display:flex; gap:6px; flex-wrap:wrap; }
+.tab-btn {
+  font-family:'Fredoka One',cursive; font-size:0.82rem;
+  padding:6px 13px; border:2px solid #e2e8f0;
+  border-radius:30px; background:white; color:#94a3b8;
+  cursor:pointer; transition:all 0.2s; white-space:nowrap;
+}
+.tab-btn.active {
+  background:linear-gradient(135deg,#3b82f6,#06b6d4);
+  border-color:transparent; color:white;
+  box-shadow:0 4px 14px rgba(59,130,246,.4);
+}
+.tools { display:flex; gap:6px; }
+.iconbtn {
+  font-size:1rem; height:38px; padding:0 12px; border-radius:20px;
+  border:2px solid #e2e8f0; background:white; cursor:pointer;
+  display:flex; align-items:center; gap:4px; transition:all .2s;
+  font-family:'Nunito',sans-serif; font-weight:700; color:#475569;
+}
+.iconbtn:hover{ background:#f1f5f9; }
+.iconbtn.off{ opacity:.45; }
+.home { text-decoration:none; }
+
+#prompt {
+  text-align:center; font-family:'Fredoka One',cursive;
+  font-size:1.15rem; color:#334155; margin:12px 12px 2px;
+}
+#prompt b{ color:#0ea5e9; }
+.sub { text-align:center; font-size:.82rem; color:#94a3b8; margin-bottom:4px; }
+
+#stage-wrap{ width:100%; display:flex; justify-content:center; padding:0 8px; }
+svg#stage{ width:100%; max-width:560px; height:auto; max-height:calc(100vh - 172px); touch-action:none; display:block; }
+
+.slot { fill:#e5e7eb; stroke:#cbd5e1; stroke-width:0.04; stroke-linejoin:round; }
+.slot.nohint { stroke:transparent; }
+.piece { stroke:#ffffff; stroke-width:0.05; stroke-linejoin:round; cursor:grab; }
+.piece.sel { stroke:#1e293b; stroke-width:0.09; }
+.piece.placed { cursor:default; }
+.outline { fill:none; stroke:#94a3b8; stroke-width:0.07; stroke-dasharray:0.18 0.14; stroke-linejoin:round; }
+
+/* overlays */
+.overlay {
+  position:fixed; inset:0; z-index:200;
+  background:rgba(255,255,255,0.86); backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.overlay.hide{ display:none; }
+.panel {
+  background:white; border-radius:32px; padding:32px 28px; text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.18); max-width:400px; width:100%;
+}
+.panel h1 { font-family:'Fredoka One',cursive; font-size:1.7rem; color:#0ea5e9; margin-bottom:8px; }
+.panel p { color:#64748b; font-size:.95rem; margin-bottom:18px; line-height:1.55; }
+.bigbtn {
+  font-family:'Fredoka One',cursive; font-size:1.25rem;
+  padding:13px 42px; border:none; border-radius:50px; color:white; cursor:pointer;
+  background:linear-gradient(135deg,#3b82f6,#06b6d4);
+  box-shadow:0 6px 22px rgba(59,130,246,.5); transition:transform .15s;
+}
+.bigbtn:hover{ transform:scale(1.05); }
+.cel-emoji{ font-size:4.2rem; margin:4px 0; }
+#confetti-c{ position:fixed; inset:0; pointer-events:none; z-index:250; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <span class="logo">🧩 图形拼组</span>
+  <div class="tabs" id="tabs"></div>
+  <div class="tools">
+    <button class="iconbtn" id="rotate-btn" title="转一下（选中一块后）" onclick="rotateSel()">🔄 转</button>
+    <button class="iconbtn" id="flip-btn" title="翻个面" onclick="flipSel()">🔁 翻</button>
+    <button class="iconbtn" id="hint-btn" title="拼块提示线" onclick="toggleHint()">💡 线</button>
+    <button class="iconbtn" id="redo-btn" title="重新拼" onclick="loadPuzzle(curIdx)">↺ 重来</button>
+    <a class="iconbtn home" href="index.html" title="回目录">🏠</a>
+  </div>
+</div>
+
+<div id="prompt">用积木拼出 <b id="p-name">图形</b>！</div>
+<div class="sub">拖动拼块放到灰色图形上 · 选中一块可以「转 / 翻」· 放对会自动吸住 ✨</div>
+
+<div id="stage-wrap">
+  <svg id="stage" viewBox="0 0 12 13" preserveAspectRatio="xMidYMid meet">
+    <g id="scene"></g>
+  </svg>
+</div>
+
+<!-- 通关 -->
+<div class="overlay hide" id="cel-overlay">
+  <div class="panel">
+    <div class="cel-emoji" id="cel-emoji">🎉</div>
+    <h1 id="cel-title">拼好啦！</h1>
+    <p id="cel-msg"></p>
+    <button class="bigbtn" id="cel-btn" onclick="nextPuzzle()">下一个 ▶</button>
+  </div>
+</div>
+
+<canvas id="confetti-c"></canvas>
+
+<script>
+// ═══════════ 发音 & 音效（与其他游戏一致）═══════════
+let soundOn=true;
+function speak(text, rate=0.95, pitch=1.15, lang='zh-CN'){
+  if(!soundOn || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang=lang; u.rate=rate; u.pitch=pitch; u.volume=1;
+  speechSynthesis.speak(u);
+}
+let aC;
+function beep(type){
+  try{
+    if(!aC) aC=new(window.AudioContext||window.webkitAudioContext)();
+    const tone=(f,t,d,v=0.2)=>{
+      const o=aC.createOscillator(),g=aC.createGain();
+      o.connect(g);g.connect(aC.destination);
+      o.frequency.setValueAtTime(f,aC.currentTime+t);
+      g.gain.setValueAtTime(v,aC.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(.001,aC.currentTime+t+d);
+      o.start(aC.currentTime+t);o.stop(aC.currentTime+t+d);
+    };
+    if(type==='snap'){tone(523,0,.06);tone(784,.06,.18);}
+    if(type==='yay'){[523,659,784,1047].forEach((f,i)=>tone(f,i*.08,.25,.2));}
+  }catch(e){}
+}
+
+// ═══════════ 拼块类型（在 4×4 单位坐标里定义，代码自动居中）═══════════
+const TYPES = {
+  large:  { pts:[[0,0],[4,0],[2,2]],          color:'#f87171' },
+  medium: { pts:[[4,0],[2,2],[4,2]],          color:'#34d399' },
+  small:  { pts:[[2,2],[4,2],[3,3]],          color:'#60a5fa' },
+  square: { pts:[[2,2],[3,3],[2,4],[1,3]],    color:'#f472b6' },
+  para:   { pts:[[4,2],[4,4],[2,4],[3,3]],    color:'#a78bfa' },
+};
+function centroid(pts){
+  let x=0,y=0; pts.forEach(p=>{x+=p[0];y+=p[1];}); return [x/pts.length, y/pts.length];
+}
+// 每个类型的 base：以质心为原点
+for(const k in TYPES){
+  const c=centroid(TYPES[k].pts);
+  TYPES[k].base = TYPES[k].pts.map(p=>[p[0]-c[0], p[1]-c[1]]);
+}
+
+// ═══════════ 关卡：每块给出「目标绝对多边形」，剪影=所有目标并集，天然可解 ═══════════
+const PUZZLES = [
+  { name:'大三角形', emoji:'🔺', tip:'两块大三角形拼一个大三角形',
+    slots:[
+      {type:'large', pts:[[0,0],[4,0],[2,2]]},
+      {type:'large', pts:[[0,0],[2,2],[0,4]]},
+    ]},
+  { name:'平行四边形', emoji:'🔷', tip:'两块大三角形拼一个平行四边形',
+    slots:[
+      {type:'large', pts:[[0,0],[4,0],[2,2]]},
+      {type:'large', pts:[[4,0],[6,2],[2,2]]},
+    ]},
+  { name:'正方形', emoji:'🟦', tip:'一块中三角 + 两块小三角，拼个正方形',
+    slots:[
+      {type:'medium', pts:[[0,0],[2,0],[2,2]]},
+      {type:'small',  pts:[[0,0],[1,1],[0,2]]},
+      {type:'small',  pts:[[0,2],[1,1],[2,2]]},
+    ]},
+  { name:'小房子', emoji:'🏠', tip:'一个正方形墙 + 一个三角形屋顶',
+    slots:[
+      {type:'small',  pts:[[0,2],[2,2],[1,1]]},              // 屋顶（小三角）
+      {type:'medium', pts:[[0,2],[2,2],[2,4]]},              // 墙·右下
+      {type:'small',  pts:[[0,2],[1,3],[0,4]]},              // 墙·左
+      {type:'small',  pts:[[0,4],[1,3],[2,4]]},              // 墙·下
+    ]},
+  { name:'大正方形', emoji:'🟥', tip:'七块全用上，拼一个大正方形（挑战！）',
+    slots:[
+      {type:'large',  pts:[[0,0],[4,0],[2,2]]},
+      {type:'large',  pts:[[0,0],[2,2],[0,4]]},
+      {type:'medium', pts:[[4,0],[2,2],[4,2]]},
+      {type:'small',  pts:[[2,2],[4,2],[3,3]]},
+      {type:'small',  pts:[[1,3],[2,4],[0,4]]},
+      {type:'square', pts:[[2,2],[3,3],[2,4],[1,3]]},
+      {type:'para',   pts:[[4,2],[4,4],[2,4],[3,3]]},
+    ]},
+];
+
+// ═══════════ 状态 ═══════════
+const scene=document.getElementById('scene');
+const svg=document.getElementById('stage');
+let PUZZLE=null, curIdx=0, pieces=[], selected=null, hintOn=true;
+let VB={w:12,h:13};       // viewBox 尺寸（会按关卡自适应）
+let dragging=null, dragOff=[0,0];
+
+const PALETTE=['#f87171','#fb923c','#fbbf24','#34d399','#22d3ee','#60a5fa','#a78bfa','#f472b6'];
+
+// 世界坐标顶点
+function worldVerts(p){
+  const a=p.rot*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
+  return p.base.map(([x,y])=>{
+    const X = p.flip? -x : x, Y=y;
+    return [X*c - Y*s + p.tx, X*s + Y*c + p.ty];
+  });
+}
+function renderPiece(p){
+  p.el.setAttribute('points', worldVerts(p).map(v=>v.map(n=>n.toFixed(3)).join(',')).join(' '));
+}
+function dist(a,b){ return Math.hypot(a[0]-b[0], a[1]-b[1]); }
+
+// ═══════════ 建关 ═══════════
+function buildTabs(){
+  const t=document.getElementById('tabs'); t.innerHTML='';
+  PUZZLES.forEach((pz,i)=>{
+    const b=document.createElement('button');
+    b.className='tab-btn'+(i===curIdx?' active':'');
+    b.textContent=pz.emoji+' '+pz.name;
+    b.onclick=()=>loadPuzzle(i);
+    t.appendChild(b);
+  });
+}
+
+function loadPuzzle(idx){
+  curIdx=idx; PUZZLE=JSON.parse(JSON.stringify(PUZZLES[idx]));
+  selected=null; dragging=null; pieces=[];
+  document.getElementById('cel-overlay').classList.add('hide');
+  document.getElementById('p-name').textContent=PUZZLE.name;
+  buildTabs();
+
+  // 剪影 bbox
+  let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+  PUZZLE.slots.forEach(s=>s.pts.forEach(([x,y])=>{
+    minx=Math.min(minx,x);miny=Math.min(miny,y);maxx=Math.max(maxx,x);maxy=Math.max(maxy,y);
+  }));
+  const spanX=maxx-minx, spanY=maxy-miny;
+  // viewBox：上方放剪影，下方放拼块托盘
+  const M=1.0;                          // 边距（单位）
+  const trayH=Math.max(spanY*0.8, 3.6); // 托盘高度（单位）
+  VB.w = spanX + M*2;
+  VB.h = spanY + M*2 + trayH;
+  svg.setAttribute('viewBox', `0 0 ${VB.w} ${VB.h}`);
+  // 剪影偏移：让剪影水平居中、顶部留 M
+  const ox = M + (0) - minx + (VB.w - M*2 - spanX)/2;
+  const oy = M - miny;
+  scene.innerHTML='';
+
+  // 目标剪影 + 提示外框
+  PUZZLE.slots.forEach(s=>{
+    s.pts = s.pts.map(([x,y])=>[x+ox, y+oy]);           // 平移到画面坐标
+    const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    poly.setAttribute('class','slot'+(hintOn?'':' nohint'));
+    poly.setAttribute('points', s.pts.map(v=>v.join(',')).join(' '));
+    scene.appendChild(poly);
+    s.filled=false; s.poly=poly;
+  });
+
+  // 拼块（每个 slot 造一块），散在下方托盘，随机旋转
+  const trayY = M + spanY + M + trayH/2;
+  const n=PUZZLE.slots.length;
+  PUZZLE.slots.forEach((s,i)=>{
+    const type=TYPES[s.type];
+    const p={
+      type:s.type, base:type.base, color:PALETTE[i%PALETTE.length],
+      tx:0, ty:0, rot:0, flip:0, placed:false, el:null
+    };
+    // 托盘位置：横向铺开（多则两排）
+    const perRow=Math.min(n, VB.w>7?7:5);
+    const row=Math.floor(i/perRow), rows=Math.ceil(n/perRow);
+    const col=i%perRow, inRow=Math.min(perRow, n-row*perRow);
+    const gapX=VB.w/(inRow+1);
+    p.tx = gapX*(col+1);
+    p.ty = trayY + (row-(rows-1)/2)*2.2;
+    p.rot = 45*Math.floor(Math.random()*8);
+    if(s.type==='para') p.flip=0;      // 平行四边形不随机翻，避免小朋友解不开
+    const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    poly.setAttribute('class','piece');
+    poly.setAttribute('fill', p.color);
+    p.el=poly;
+    scene.appendChild(poly);
+    renderPiece(p);
+    attachDrag(p);
+    pieces.push(p);
+  });
+
+  document.getElementById('hint-btn').classList.toggle('off', !hintOn);
+  speak('拼一个'+PUZZLE.name);
+}
+
+// ═══════════ 指针 → 画面坐标 ═══════════
+function toScene(clientX, clientY){
+  const r=svg.getBoundingClientRect();
+  const x=(clientX-r.left)/r.width * VB.w;
+  const y=(clientY-r.top)/r.height * VB.h;
+  return [x,y];
+}
+
+// ═══════════ 拖拽 ═══════════
+function attachDrag(p){
+  p.el.addEventListener('pointerdown', ev=>{
+    if(p.placed) return;
+    ev.preventDefault();
+    select(p);
+    // 把选中块提到最上层
+    scene.appendChild(p.el);
+    dragging=p;
+    const sp=toScene(ev.clientX, ev.clientY);
+    dragOff=[sp[0]-p.tx, sp[1]-p.ty];
+    p.el.setPointerCapture&&p.el.setPointerCapture(ev.pointerId);
+  });
+  p.el.addEventListener('pointermove', ev=>{
+    if(dragging!==p) return;
+    ev.preventDefault();
+    const sp=toScene(ev.clientX, ev.clientY);
+    p.tx=sp[0]-dragOff[0]; p.ty=sp[1]-dragOff[1];
+    renderPiece(p);
+  });
+  const end=ev=>{
+    if(dragging!==p) return;
+    dragging=null;
+    trySnap(p);
+  };
+  p.el.addEventListener('pointerup', end);
+  p.el.addEventListener('pointercancel', end);
+}
+
+function select(p){
+  if(selected&&selected.el) selected.el.classList.remove('sel');
+  selected=p;
+  if(p&&!p.placed) p.el.classList.add('sel');
+}
+function rotateSel(){
+  if(!selected||selected.placed) return;
+  selected.rot=(selected.rot+45)%360;
+  renderPiece(selected); beep('snap');
+  trySnap(selected);
+}
+function flipSel(){
+  if(!selected||selected.placed) return;
+  selected.flip=1-selected.flip;
+  renderPiece(selected);
+  trySnap(selected);
+}
+
+// ═══════════ 吸附判定（按顶点集合，天然处理旋转/对称）═══════════
+function vertsMatch(a, b, tol){
+  if(a.length!==b.length) return false;
+  return b.every(bp => a.some(ap => dist(ap,bp)<tol));
+}
+function trySnap(p){
+  for(const slot of PUZZLE.slots){
+    if(slot.filled || slot.type!==p.type) continue;
+    const sc=centroid(slot.pts), pc=[p.tx,p.ty];
+    if(dist(sc,pc) > 1.0) continue;
+    const shifted = worldVerts(p).map(v=>[v[0]+(sc[0]-pc[0]), v[1]+(sc[1]-pc[1])]);
+    if(vertsMatch(shifted, slot.pts, 0.55)){
+      p.tx=sc[0]; p.ty=sc[1]; renderPiece(p);
+      slot.filled=true; p.placed=true;
+      p.el.classList.remove('sel'); p.el.classList.add('placed');
+      p.el.setAttribute('stroke','#ffffff');
+      beep('snap');
+      if(selected===p) selected=null;
+      checkWin();
+      return true;
+    }
+  }
+  return false;
+}
+
+function checkWin(){
+  if(PUZZLE.slots.every(s=>s.filled)){
+    setTimeout(()=>{
+      document.getElementById('cel-emoji').textContent=PUZZLE.emoji;
+      document.getElementById('cel-title').textContent='拼好啦！';
+      document.getElementById('cel-msg').innerHTML=`你拼出了 <b>${PUZZLE.name}</b>！太棒啦 🌟`;
+      document.getElementById('cel-btn').textContent = curIdx<PUZZLES.length-1 ? '下一个 ▶' : '再玩一次 🔁';
+      document.getElementById('cel-overlay').classList.remove('hide');
+      beep('yay'); launchConfetti();
+      speak('太棒啦！你拼出了'+PUZZLE.name);
+    }, 220);
+  }
+}
+function nextPuzzle(){
+  if(curIdx<PUZZLES.length-1) loadPuzzle(curIdx+1);
+  else loadPuzzle(0);
+}
+
+function toggleHint(){
+  hintOn=!hintOn;
+  document.getElementById('hint-btn').classList.toggle('off', !hintOn);
+  PUZZLE.slots.forEach(s=> s.poly.setAttribute('class','slot'+(hintOn?'':' nohint')));
+}
+
+// 键盘：R 转、F 翻（有物理键盘时也能玩）
+document.addEventListener('keydown', e=>{
+  const k=(e.key||'').toLowerCase();
+  if(k==='r') rotateSel();
+  else if(k==='f') flipSel();
+});
+
+// ═══════════ 彩带 ═══════════
+const cvs=document.getElementById('confetti-c'), cctx=cvs.getContext('2d');
+let cparts=[], confRaf;
+function launchConfetti(){
+  cvs.width=innerWidth; cvs.height=innerHeight;
+  const colors=['#f87171','#fb923c','#fbbf24','#4ade80','#60a5fa','#c084fc','#f472b6','#34d399'];
+  for(let i=0;i<120;i++){
+    cparts.push({ x:Math.random()*innerWidth, y:-10,
+      vx:(Math.random()-.5)*6, vy:Math.random()*4+2,
+      color:colors[Math.floor(Math.random()*colors.length)],
+      sz:Math.random()*9+3, rot:Math.random()*360, rv:(Math.random()-.5)*8, life:1, dec:.012+Math.random()*.006 });
+  }
+  if(!confRaf) animConf();
+}
+function animConf(){
+  cctx.clearRect(0,0,cvs.width,cvs.height);
+  cparts=cparts.filter(p=>p.life>0);
+  cparts.forEach(p=>{
+    cctx.save(); cctx.globalAlpha=Math.max(0,p.life);
+    cctx.translate(p.x,p.y); cctx.rotate(p.rot*Math.PI/180);
+    cctx.fillStyle=p.color; cctx.fillRect(-p.sz/2,-p.sz/2,p.sz,p.sz);
+    cctx.restore();
+    p.x+=p.vx; p.y+=p.vy; p.rot+=p.rv; p.life-=p.dec;
+  });
+  if(cparts.length){ confRaf=requestAnimationFrame(animConf); }
+  else { confRaf=null; cctx.clearRect(0,0,cvs.width,cvs.height); }
+}
+
+// 点空白处取消选中
+svg.addEventListener('pointerdown', e=>{ if(e.target===svg) select(null); });
+
+loadPuzzle(0);
+</script>
+</body>
+</html>
