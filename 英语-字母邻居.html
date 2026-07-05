@@ -158,6 +158,7 @@ body {
     <button class="tab-btn"        data-mode="both"   onclick="selectMode('both',this)">前后都找</button>
   </div>
   <div class="toolbtns">
+    <button class="iconbtn off" id="shuffle-btn" title="字母带顺序 / 乱序" onclick="toggleShuffle()">🔡</button>
     <button class="iconbtn" id="sound-btn" title="声音开关" onclick="toggleSound()">🔊</button>
     <button class="iconbtn" id="hint-btn"  title="提示开关" onclick="toggleHint()">💡</button>
     <a class="home" href="index.html">🏠 目录</a>
@@ -179,7 +180,7 @@ body {
 </div>
 
 <div id="mascot">🐨</div>
-<div class="strip-hint">👇 敲键盘，或用手指点下面的字母</div>
+<div class="strip-hint">👇 敲键盘，或用手指点下面的字母 · 右上角 🔡/🔀 可切换「顺序 / 乱序」</div>
 <div id="strip"></div>
 
 <!-- START -->
@@ -252,16 +253,35 @@ const TOTAL=10;
 let round=0, star=0, wrongs=0, startMs=0;
 let target='', need=[], filled={}, expected={}, lastTarget='';
 let gameActive=false, hintTimer=null;
+let shuffled=false;      // 字母带是否乱序
 
 // ═══════════ 构建字母带 ═══════════
 const strip=document.getElementById('strip');
+const tileEls={};
 for(const L of LETTERS){
   const t=document.createElement('div');
   t.className='tile'; t.textContent=L; t.dataset.letter=L;
   t.onclick=()=>onInput(L);
-  strip.appendChild(t);
+  strip.appendChild(t); tileEls[L]=t;
 }
-function tileOf(L){ return strip.querySelector(`.tile[data-letter="${L}"]`); }
+function tileOf(L){ return tileEls[L]; }
+function shuffledOrder(){
+  const a=LETTERS.split('');
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function layoutStrip(){
+  const order = shuffled ? shuffledOrder() : LETTERS.split('');
+  order.forEach(L=> strip.appendChild(tileEls[L]));  // appendChild 会移动已有节点，实现重排
+}
+function toggleShuffle(){
+  shuffled=!shuffled;
+  const b=document.getElementById('shuffle-btn');
+  b.textContent = shuffled ? '🔀' : '🔡';
+  b.classList.toggle('off', !shuffled);
+  layoutStrip();
+  if(gameActive) paintStrip();   // 保持当前高亮
+}
 
 // ═══════════ 模式切换 ═══════════
 function selectMode(m, el){
@@ -294,6 +314,7 @@ function nextRound(){
   if(round>TOTAL){ endGame(); return; }
   document.getElementById('hud-round').textContent=round;
   pickTarget();
+  layoutStrip();      // 乱序模式下每关重新打乱，防止靠记位置作弊
   render();
   gameActive=true;
   armHint();
@@ -330,7 +351,12 @@ function render(){
   else if(mode==='before') p.innerHTML=`<b>${target}</b> 前面是哪个字母？`;
   else p.innerHTML=`<b>${target}</b> 前面和后面各是谁？`;
 
-  // 字母带高亮
+  paintStrip();
+  document.getElementById('hud-star').textContent=star;
+  speak(target);
+}
+// 只负责字母带高亮（供 render 和「顺序/乱序」切换共用）
+function paintStrip(){
   strip.querySelectorAll('.tile').forEach(t=>{
     t.classList.remove('target','ok','dim','hintpulse');
     t.style.background=''; t.style.color='';   // 清掉上一关目标格的内联色，避免残留
@@ -339,9 +365,7 @@ function render(){
   const tt=tileOf(target);
   tt.classList.remove('dim'); tt.classList.add('target');
   tt.style.background=lColor(target); tt.style.color='#fff';
-
-  document.getElementById('hud-star').textContent=star;
-  speak(target);
+  need.forEach(s=>{ if(filled[s]){ const t=tileOf(expected[s]); if(t){ t.classList.remove('dim'); t.classList.add('ok'); } } });
 }
 function setSlot(which, active){
   const slot=document.getElementById('slot-'+which);
@@ -373,7 +397,8 @@ function fillSlot(slot, L){
   box.textContent=L; box.className='box ok pop';
   const t=tileOf(L);
   if(t){ t.classList.remove('dim'); t.classList.add('ok'); }
-  beep('hit'); speak(L);
+  beep('hit');
+  speak(L, 0.7, 1.35);   // 选中后清晰读出这个字母的发音（稍慢，方便小朋友听清）
   cheer();
   // 本关是否完成
   if(need.every(s=>filled[s])){
