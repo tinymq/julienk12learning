@@ -160,7 +160,7 @@ body {
   <div class="toolbtns">
     <button class="iconbtn off" id="shuffle-btn" title="字母带顺序 / 乱序" onclick="toggleShuffle()">🔡</button>
     <button class="iconbtn" id="sound-btn" title="声音开关" onclick="toggleSound()">🔊</button>
-    <button class="iconbtn" id="hint-btn"  title="提示开关" onclick="toggleHint()">💡</button>
+    <button class="iconbtn off" id="hint-btn"  title="提示开关（默认关，卡住可开）" onclick="toggleHint()">💡</button>
     <a class="home" href="index.html">🏠 目录</a>
   </div>
 </div>
@@ -210,7 +210,7 @@ const LC = ['#f87171','#fb923c','#fbbf24','#a3e635','#34d399',
             '#22d3ee','#60a5fa','#818cf8','#c084fc','#f472b6'];
 function lColor(l){ return LC[(l.charCodeAt(0)-65)%LC.length]; }
 
-let soundOn=true, hintOn=true;
+let soundOn=true, hintOn=false;   // 提示默认关闭：让孩子自己想，不给答案色
 let enVoice=null;
 function initVoice(){
   const vs=speechSynthesis.getVoices();
@@ -222,7 +222,9 @@ if(window.speechSynthesis){ speechSynthesis.onvoiceschanged=initVoice; initVoice
 function speak(text, rate=0.85, pitch=1.3){
   if(!soundOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(text);
+  // 单个字母用小写，避免部分语音读成 "capital X"，只读字母名（如 q → "cue"）
+  const say = text.length===1 ? text.toLowerCase() : text;
+  const u=new SpeechSynthesisUtterance(say);
   u.lang='en-US'; u.rate=rate; u.pitch=pitch; u.volume=1;
   if(enVoice) u.voice=enVoice;
   speechSynthesis.speak(u);
@@ -404,7 +406,7 @@ function fillSlot(slot, L){
   if(need.every(s=>filled[s])){
     star++; document.getElementById('hud-star').textContent=star;
     gameActive=false; clearTimeout(hintTimer);
-    setTimeout(nextRound, 850);
+    setTimeout(nextRound, 1300);   // 留足时间把答案字母读完，再进下一题
   }
 }
 function wrong(L){
