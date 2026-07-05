@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌈 战战的学习乐园</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:'Fredoka','PingFang SC','Microsoft YaHei',sans-serif;
+    background:linear-gradient(160deg,#a8edea 0%,#fed6e3 100%);
+    min-height:100vh;color:#334155;padding:24px 16px 60px;
+  }
+  header{text-align:center;margin:12px 0 32px;}
+  header h1{font-size:2.4rem;color:#fff;text-shadow:0 4px 14px rgba(0,0,0,.15);letter-spacing:1px;}
+  header p{margin-top:8px;font-size:1rem;color:#475569;opacity:.9;}
+  .wrap{max-width:920px;margin:0 auto;}
+
+  .section{margin-bottom:34px;}
+  .sec-head{
+    display:flex;align-items:center;gap:12px;margin-bottom:16px;
+    padding:10px 20px;border-radius:18px;color:#fff;
+    box-shadow:0 6px 18px rgba(0,0,0,.12);
+  }
+  .sec-head .ico{font-size:1.8rem;}
+  .sec-head h2{font-size:1.4rem;font-weight:700;}
+  .sec-head .cnt{margin-left:auto;font-size:.85rem;opacity:.9;background:rgba(255,255,255,.25);padding:3px 12px;border-radius:20px;}
+  .chinese .sec-head{background:linear-gradient(135deg,#f6416c,#ff8177);}
+  .math    .sec-head{background:linear-gradient(135deg,#3b82f6,#06b6d4);}
+  .english .sec-head{background:linear-gradient(135deg,#10b981,#84cc16);}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}
+  .card{
+    display:flex;flex-direction:column;text-decoration:none;color:inherit;
+    background:#fff;border-radius:20px;padding:20px 18px;
+    box-shadow:0 6px 16px rgba(0,0,0,.08);
+    transition:transform .18s ease,box-shadow .18s ease;
+    border:3px solid transparent;
+  }
+  .card:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 12px 26px rgba(0,0,0,.15);}
+  .chinese .card:hover{border-color:#ff8177;}
+  .math    .card:hover{border-color:#06b6d4;}
+  .english .card:hover{border-color:#84cc16;}
+  .card .emoji{font-size:2.6rem;margin-bottom:10px;}
+  .card .title{font-size:1.15rem;font-weight:700;margin-bottom:6px;}
+  .card .desc{font-size:.82rem;color:#64748b;line-height:1.45;}
+  .card .go{margin-top:14px;align-self:flex-start;font-size:.8rem;font-weight:600;color:#fff;background:#94a3b8;padding:5px 16px;border-radius:20px;}
+  .chinese .card .go{background:#f6416c;}
+  .math    .card .go{background:#3b82f6;}
+  .english .card .go{background:#10b981;}
+
+  footer{text-align:center;margin-top:40px;font-size:.82rem;color:#64748b;}
+  footer .tip{background:rgba(255,255,255,.55);display:inline-block;padding:8px 18px;border-radius:20px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🌈 战战的学习乐园</h1>
+    <p>选一个喜欢的游戏开始玩吧！点卡片就能进入 🎮</p>
+  </header>
+
+  <!-- 语文 -->
+  <section class="section chinese">
+    <div class="sec-head"><span class="ico">📖</span><h2>语文</h2><span class="cnt">1 个游戏</span></div>
+    <div class="cards">
+      <a class="card" href="拼音启蒙.html">
+        <span class="emoji">🀄</span>
+        <div class="title">拼音启蒙</div>
+        <div class="desc">声母、韵母，还能拼一拼，边听边学汉语拼音。</div>
+        <span class="go">开始 ▶</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- 数学 -->
+  <section class="section math">
+    <div class="sec-head"><span class="ico">🔢</span><h2>数学</h2><span class="cnt">1 个游戏</span></div>
+    <div class="cards">
+      <a class="card" href="九九乘法表.html">
+        <span class="emoji">✖️</span>
+        <div class="title">九九乘法表</div>
+        <div class="desc">翻格子、听读数，玩着玩着就把乘法记住啦。</div>
+        <span class="go">开始 ▶</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- 英语 -->
+  <section class="section english">
+    <div class="sec-head"><span class="ico">🔤</span><h2>英语</h2><span class="cnt">4 个游戏</span></div>
+    <div class="cards">
+      <a class="card" href="战战的键盘英雄+小写.html">
+        <span class="emoji">⌨️</span>
+        <div class="title">键盘小英雄</div>
+        <div class="desc">按键盘打字母，A→Z顺序 / 随机 / 单词三种模式，还能练大小写。</div>
+        <span class="go">开始 ▶</span>
+      </a>
+      <a class="card" href="字母练习-发音.html">
+        <span class="emoji">🎯</span>
+        <div class="title">字母捕手（会发音）</div>
+        <div class="desc">字母掉下来，按对应键接住，接住时会读出字母发音。</div>
+        <span class="go">开始 ▶</span>
+      </a>
+      <a class="card" href="字母雨游戏.html">
+        <span class="emoji">🌧️</span>
+        <div class="title">字母雨</div>
+        <div class="desc">字母像下雨一样落下，快点认出并按键，反应越快越棒！</div>
+        <span class="go">开始 ▶</span>
+      </a>
+      <a class="card" href="自然拼读启蒙.html">
+        <span class="emoji">🔡</span>
+        <div class="title">自然拼读启蒙</div>
+        <div class="desc">字母音墙 + 拼读矩阵，学 Phonics，看到单词会拼读。</div>
+        <span class="go">开始 ▶</span>
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <span class="tip">💡 以后新增游戏：把 html 文件放进这个文件夹，在 index.html 对应科目里加一张卡片就行。</span>
+  </footer>
+</div>
+</body>
+</html>
