@@ -167,7 +167,9 @@ body {
   position:relative; border:2px solid #f1f5f9;
   transition:transform .08s,box-shadow .08s,background .15s,border-color .15s;
   flex-shrink:0;
+  touch-action:manipulation;   /* iPad 点击无 300ms 延迟、不缩放 */
 }
+.key[data-code^="Key"]{ cursor:pointer; }
 .km { font-family:'Fredoka One',cursive; font-size:calc(var(--u)*.34); color:#1e293b; line-height:1; }
 .ks { font-size:calc(var(--u)*.19); color:#94a3b8; line-height:1; margin-bottom:1px; }
 .key.letter .km { font-size:calc(var(--u)*.42); font-weight:900; }
@@ -289,6 +291,13 @@ body.show-fingers .key.target .km,
 }
 .key.tall { height:calc(var(--u)*2 + var(--gap)); }
 .key.wide { width:calc(var(--u)*2 + var(--gap)); }
+
+/* ── iPad / 触屏 / 窄屏：只留主字母键盘并自动缩放，避免超宽被截断 ── */
+@media (max-width:1100px){
+  #kb-nav, #kb-numpad { display:none; }
+  #kb-container { gap:0; }
+  :root { --u: clamp(24px, 8.6vw, 46px); }
+}
 
 /* ── FINGER LEGEND (below keyboard) ── */
 #flgnd {
@@ -1173,11 +1182,10 @@ function mascotSad(){
 // ═══════════════════════════════════════════
 //  KEYDOWN HANDLER
 // ═══════════════════════════════════════════
-document.addEventListener('keydown', e=>{
-  if(e.repeat) return;
-  const k=e.key.toUpperCase();
-  if(!/^[A-Z]$/.test(k)) return;
+function inputLetter(k){
   if(!gameActive) return;
+  k=(k||'').toUpperCase();
+  if(!/^[A-Z]$/.test(k)) return;
   pressKey('Key'+k);
   if(k===currentTarget.toUpperCase()){
     if(mode==='seq'||mode==='seql') seqCorrect(k);
@@ -1186,7 +1194,22 @@ document.addEventListener('keydown', e=>{
   } else {
     handleWrong('Key'+k);
   }
+}
+document.addEventListener('keydown', e=>{
+  if(e.repeat) return;
+  const k=e.key.toUpperCase();
+  if(!/^[A-Z]$/.test(k)) return;
+  inputLetter(k);
 });
+// iPad / 触屏：点屏幕键盘上的字母键 = 敲对应键
+document.addEventListener('pointerdown', e=>{
+  const key=e.target.closest('.key[data-code]');
+  if(!key) return;
+  const m=/^Key([A-Z])$/.exec(key.dataset.code||'');
+  if(!m) return;
+  e.preventDefault();
+  inputLetter(m[1]);
+}, {passive:false});
 
 // ═══════════════════════════════════════════
 //  END ROUND
