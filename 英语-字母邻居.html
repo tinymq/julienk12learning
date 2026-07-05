@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔤 字母邻居</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  min-height:100vh;
+  background: linear-gradient(160deg,#e8f4fd 0%,#fce4f5 40%,#e8fce8 80%,#fff9e6 100%);
+  font-family:'Nunito',sans-serif;
+  user-select:none; overflow-x:hidden; color:#334155;
+}
+
+/* ── TOP BAR ── */
+#topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 18px; gap:8px; flex-wrap:wrap;
+  background:rgba(255,255,255,0.75); backdrop-filter:blur(14px);
+  border-bottom:2px solid rgba(255,255,255,0.9);
+  position:sticky; top:0; z-index:100;
+}
+.logo {
+  font-family:'Fredoka One',cursive; font-size:1.4rem;
+  background:linear-gradient(90deg,#f97316,#ec4899,#8b5cf6,#3b82f6);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text; background-size:300%; white-space:nowrap;
+  animation:shimmer 3s linear infinite;
+}
+@keyframes shimmer{0%{background-position:0%}100%{background-position:300%}}
+.mode-tabs { display:flex; gap:6px; flex-wrap:wrap; }
+.tab-btn {
+  font-family:'Fredoka One',cursive; font-size:0.82rem;
+  padding:6px 14px; border:2px solid #e2e8f0;
+  border-radius:30px; background:white; color:#94a3b8;
+  cursor:pointer; transition:all 0.2s; white-space:nowrap;
+}
+.tab-btn.active {
+  background:linear-gradient(135deg,#10b981,#059669);
+  border-color:transparent; color:white;
+  box-shadow:0 4px 14px rgba(16,185,129,.4);
+}
+.toolbtns { display:flex; gap:6px; }
+.iconbtn {
+  font-size:1.1rem; width:38px; height:38px; border-radius:50%;
+  border:2px solid #e2e8f0; background:white; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:all .2s;
+}
+.iconbtn:hover{ background:#f1f5f9; }
+.iconbtn.off{ opacity:.45; }
+.home {
+  font-size:0.82rem; text-decoration:none; color:#64748b;
+  padding:6px 12px; border:2px solid #e2e8f0; border-radius:30px; background:white;
+}
+
+/* ── HUD ── */
+#hud {
+  display:flex; justify-content:center; gap:26px; padding:12px 10px 2px;
+  font-family:'Fredoka One',cursive; color:#475569;
+}
+#hud .h { text-align:center; }
+#hud .hn { font-size:1.5rem; color:#0ea5e9; }
+#hud .hl { font-size:.72rem; color:#94a3b8; letter-spacing:1px; }
+
+/* ── PROMPT ── */
+#prompt {
+  text-align:center; font-family:'Fredoka One',cursive;
+  font-size:1.35rem; color:#334155; margin:10px 12px 4px; min-height:1.6em;
+}
+#prompt b{ color:#ec4899; }
+
+/* ── SLOTS ── */
+#slots {
+  display:flex; justify-content:center; align-items:center; gap:14px;
+  margin:6px 10px 14px; flex-wrap:wrap;
+}
+.slot { display:flex; flex-direction:column; align-items:center; gap:6px; }
+.slot.hide { display:none; }
+.box {
+  width:110px; height:130px; border-radius:26px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Fredoka One',cursive; font-size:4.6rem;
+  background:white; box-shadow:0 8px 22px rgba(0,0,0,.10);
+  transition:transform .2s;
+}
+.box.target { color:white; }
+.box.ask { color:#cbd5e1; border:4px dashed #cbd5e1; background:#f8fafc; }
+.box.ok   { color:white; background:linear-gradient(135deg,#34d399,#10b981); }
+.box.pop  { animation:pop .45s cubic-bezier(.34,1.56,.64,1); }
+.box.shake{ animation:shake .4s; }
+@keyframes pop { 0%{transform:scale(.5)} 100%{transform:scale(1)} }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-9px)} 40%{transform:translateX(9px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+.slotlabel { font-family:'Fredoka One',cursive; font-size:.9rem; color:#94a3b8; }
+@media (max-width:480px){ .box{ width:88px; height:104px; font-size:3.6rem; } }
+
+/* ── ALPHABET STRIP ── */
+.strip-hint { text-align:center; font-size:.8rem; color:#94a3b8; margin:2px 0 6px; }
+#strip {
+  display:flex; flex-wrap:wrap; justify-content:center; gap:6px;
+  max-width:760px; margin:0 auto 20px; padding:0 12px;
+}
+.tile {
+  width:46px; height:46px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Fredoka One',cursive; font-size:1.35rem;
+  background:white; color:#cbd5e1; cursor:pointer;
+  box-shadow:0 3px 0 #e2e8f0; transition:transform .12s, background .2s, color .2s;
+}
+.tile:active{ transform:translateY(2px); box-shadow:0 1px 0 #e2e8f0; }
+.tile.dim{ opacity:.5; }
+.tile.target{ color:white; transform:translateY(-3px) scale(1.08); box-shadow:0 6px 0 rgba(0,0,0,.12); }
+.tile.ok{ background:linear-gradient(135deg,#34d399,#10b981); color:white; box-shadow:0 3px 0 #059669; }
+.tile.hintpulse{ animation:hintp .7s ease-in-out 2; }
+@keyframes hintp { 0%,100%{ box-shadow:0 3px 0 #e2e8f0; } 50%{ box-shadow:0 0 0 5px #fde68a; background:#fef9c3; } }
+@media (max-width:480px){ .tile{ width:38px; height:38px; font-size:1.1rem; } }
+
+/* ── MASCOT ── */
+#mascot { text-align:center; font-size:2.6rem; height:1.2em; transition:transform .2s; }
+#mascot.cheer{ animation:cheer .6s; }
+#mascot.sad{ animation:sad .5s; }
+@keyframes cheer { 0%,100%{transform:translateY(0) rotate(0)} 30%{transform:translateY(-16px) rotate(-12deg)} 60%{transform:translateY(-6px) rotate(12deg)} }
+@keyframes sad { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-8deg)} 75%{transform:rotate(8deg)} }
+
+/* ── START OVERLAY ── */
+.overlay {
+  position:fixed; inset:0; z-index:200;
+  background:rgba(255,255,255,0.86); backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.overlay.hide{ display:none; }
+.panel {
+  background:white; border-radius:32px; padding:34px 30px; text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.18); max-width:400px; width:100%;
+}
+.panel h1 { font-family:'Fredoka One',cursive; font-size:1.7rem; color:#0ea5e9; margin-bottom:6px; }
+.panel p { color:#64748b; font-size:.95rem; margin-bottom:18px; line-height:1.5; }
+.bigbtn {
+  font-family:'Fredoka One',cursive; font-size:1.3rem;
+  padding:14px 46px; border:none; border-radius:50px; color:white; cursor:pointer;
+  background:linear-gradient(135deg,#10b981,#059669);
+  box-shadow:0 6px 22px rgba(16,185,129,.5); transition:transform .15s;
+}
+.bigbtn:hover{ transform:scale(1.05); }
+.cel-medal{ font-size:4.5rem; margin:6px 0; }
+.cel-stats{ color:#475569; font-size:1rem; margin:10px 0 20px; line-height:1.7; }
+#confetti-c{ position:fixed; inset:0; pointer-events:none; z-index:250; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <span class="logo">🔤 字母邻居</span>
+  <div class="mode-tabs">
+    <button class="tab-btn active" data-mode="after"  onclick="selectMode('after',this)">只找后面</button>
+    <button class="tab-btn"        data-mode="before" onclick="selectMode('before',this)">只找前面</button>
+    <button class="tab-btn"        data-mode="both"   onclick="selectMode('both',this)">前后都找</button>
+  </div>
+  <div class="toolbtns">
+    <button class="iconbtn" id="sound-btn" title="声音开关" onclick="toggleSound()">🔊</button>
+    <button class="iconbtn" id="hint-btn"  title="提示开关" onclick="toggleHint()">💡</button>
+    <a class="home" href="index.html">🏠 目录</a>
+  </div>
+</div>
+
+<div id="hud">
+  <div class="h"><div class="hn" id="hud-round">1</div><div class="hl">第几关</div></div>
+  <div class="h"><div class="hn" id="hud-star">0</div><div class="hl">⭐ 连对</div></div>
+  <div class="h"><div class="hn" id="hud-total">/10</div><div class="hl">共几关</div></div>
+</div>
+
+<div id="prompt">准备好了吗？</div>
+
+<div id="slots">
+  <div class="slot" id="slot-before"><div class="box ask" id="box-before">?</div><div class="slotlabel">前面</div></div>
+  <div class="slot" id="slot-target"><div class="box target" id="box-target">A</div><div class="slotlabel">这个字母</div></div>
+  <div class="slot" id="slot-after"><div class="box ask" id="box-after">?</div><div class="slotlabel">后面</div></div>
+</div>
+
+<div id="mascot">🐨</div>
+<div class="strip-hint">👇 敲键盘，或用手指点下面的字母</div>
+<div id="strip"></div>
+
+<!-- START -->
+<div class="overlay" id="start-overlay">
+  <div class="panel">
+    <h1>🔤 字母邻居</h1>
+    <p>看看每个字母的<b>前面</b>和<b>后面</b>是谁！<br>敲键盘或点字母都可以～<br>上面可以换玩法哦。</p>
+    <button class="bigbtn" onclick="startGame()">▶ 开始玩！</button>
+  </div>
+</div>
+
+<!-- CELEBRATION -->
+<div class="overlay hide" id="cel-overlay">
+  <div class="panel">
+    <h1 id="cel-title">全部完成啦！</h1>
+    <div class="cel-medal" id="cel-medal">🥇</div>
+    <div class="cel-stats" id="cel-stats"></div>
+    <button class="bigbtn" onclick="startGame()">🔁 再玩一次</button>
+  </div>
+</div>
+
+<canvas id="confetti-c"></canvas>
+
+<script>
+// ═══════════ 颜色 & 发音 & 音效（与其他游戏一致）═══════════
+const LC = ['#f87171','#fb923c','#fbbf24','#a3e635','#34d399',
+            '#22d3ee','#60a5fa','#818cf8','#c084fc','#f472b6'];
+function lColor(l){ return LC[(l.charCodeAt(0)-65)%LC.length]; }
+
+let soundOn=true, hintOn=true;
+let enVoice=null;
+function initVoice(){
+  const vs=speechSynthesis.getVoices();
+  const pref=['Samantha','Karen','Daniel','Google US English','Microsoft Zira'];
+  enVoice=pref.reduce((f,n)=>f||vs.find(v=>v.name.includes(n)&&v.lang.startsWith('en')),null)
+    ||vs.find(v=>v.lang.startsWith('en-'))||vs[0];
+}
+if(window.speechSynthesis){ speechSynthesis.onvoiceschanged=initVoice; initVoice(); }
+function speak(text, rate=0.85, pitch=1.3){
+  if(!soundOn || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='en-US'; u.rate=rate; u.pitch=pitch; u.volume=1;
+  if(enVoice) u.voice=enVoice;
+  speechSynthesis.speak(u);
+}
+let aC;
+function beep(type){
+  if(!soundOn) return;
+  try{
+    if(!aC) aC=new(window.AudioContext||window.webkitAudioContext)();
+    const tone=(f,t,d,v=0.2)=>{
+      const o=aC.createOscillator(),g=aC.createGain();
+      o.connect(g);g.connect(aC.destination);
+      o.frequency.setValueAtTime(f,aC.currentTime+t);
+      g.gain.setValueAtTime(v,aC.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(.001,aC.currentTime+t+d);
+      o.start(aC.currentTime+t);o.stop(aC.currentTime+t+d);
+    };
+    if(type==='hit'){tone(440,0,.07);tone(660,.06,.1);tone(880,.13,.3);}
+    if(type==='err'){tone(200,0,.12,.18);tone(150,.1,.25,.18);}
+    if(type==='yay'){[523,659,784,1047].forEach((f,i)=>tone(f,i*.08,.25,.2));}
+  }catch(e){}
+}
+
+// ═══════════ 状态 ═══════════
+const LETTERS='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+let mode='after';        // after | before | both
+const TOTAL=10;
+let round=0, star=0, wrongs=0, startMs=0;
+let target='', need=[], filled={}, expected={}, lastTarget='';
+let gameActive=false, hintTimer=null;
+
+// ═══════════ 构建字母带 ═══════════
+const strip=document.getElementById('strip');
+for(const L of LETTERS){
+  const t=document.createElement('div');
+  t.className='tile'; t.textContent=L; t.dataset.letter=L;
+  t.onclick=()=>onInput(L);
+  strip.appendChild(t);
+}
+function tileOf(L){ return strip.querySelector(`.tile[data-letter="${L}"]`); }
+
+// ═══════════ 模式切换 ═══════════
+function selectMode(m, el){
+  mode=m;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  startGame();
+}
+function toggleSound(){
+  soundOn=!soundOn;
+  document.getElementById('sound-btn').textContent=soundOn?'🔊':'🔇';
+  document.getElementById('sound-btn').classList.toggle('off',!soundOn);
+  if(!soundOn && window.speechSynthesis) speechSynthesis.cancel();
+}
+function toggleHint(){
+  hintOn=!hintOn;
+  document.getElementById('hint-btn').classList.toggle('off',!hintOn);
+}
+
+// ═══════════ 开始 & 出题 ═══════════
+function startGame(){
+  document.getElementById('start-overlay').classList.add('hide');
+  document.getElementById('cel-overlay').classList.add('hide');
+  round=0; star=0; wrongs=0; startMs=Date.now();
+  document.getElementById('hud-total').textContent='/'+TOTAL;
+  nextRound();
+}
+function nextRound(){
+  round++;
+  if(round>TOTAL){ endGame(); return; }
+  document.getElementById('hud-round').textContent=round;
+  pickTarget();
+  render();
+  gameActive=true;
+  armHint();
+}
+function pickTarget(){
+  // 依模式限定目标，保证要找的邻居一定存在，避免开头/结尾造成困惑
+  let lo=0, hi=25;
+  if(mode==='after'){ hi=24; need=['after']; }        // A..Y
+  else if(mode==='before'){ lo=1; need=['before']; }  // B..Z
+  else { lo=1; hi=24; need=['before','after']; }       // B..Y
+  let idx;
+  do { idx=lo+Math.floor(Math.random()*(hi-lo+1)); }
+  while(LETTERS[idx]===lastTarget);
+  target=LETTERS[idx]; lastTarget=target;
+  expected={};
+  if(need.includes('before')) expected.before=LETTERS[idx-1];
+  if(need.includes('after'))  expected.after =LETTERS[idx+1];
+  filled={};
+}
+
+// ═══════════ 渲染 ═══════════
+function render(){
+  // 中间三格
+  const bT=document.getElementById('box-target');
+  bT.textContent=target; bT.style.background=lColor(target);
+  bT.classList.remove('pop'); void bT.offsetWidth; bT.classList.add('pop');
+
+  setSlot('before', need.includes('before'));
+  setSlot('after',  need.includes('after'));
+
+  // 提示语
+  const p=document.getElementById('prompt');
+  if(mode==='after')  p.innerHTML=`<b>${target}</b> 后面是哪个字母？`;
+  else if(mode==='before') p.innerHTML=`<b>${target}</b> 前面是哪个字母？`;
+  else p.innerHTML=`<b>${target}</b> 前面和后面各是谁？`;
+
+  // 字母带高亮
+  strip.querySelectorAll('.tile').forEach(t=>{
+    t.classList.remove('target','ok','dim','hintpulse');
+    t.style.background=''; t.style.color='';   // 清掉上一关目标格的内联色，避免残留
+    t.classList.add('dim');
+  });
+  const tt=tileOf(target);
+  tt.classList.remove('dim'); tt.classList.add('target');
+  tt.style.background=lColor(target); tt.style.color='#fff';
+
+  document.getElementById('hud-star').textContent=star;
+  speak(target);
+}
+function setSlot(which, active){
+  const slot=document.getElementById('slot-'+which);
+  const box=document.getElementById('box-'+which);
+  if(active){
+    slot.classList.remove('hide');
+    box.textContent='?'; box.className='box ask';
+  } else {
+    slot.classList.add('hide');
+  }
+}
+
+// ═══════════ 输入处理 ═══════════
+function onInput(L){
+  if(!gameActive) return;
+  L=L.toUpperCase();
+  if(L===target){ speak(target); return; }   // 点到目标本身：只读一遍，不算错
+  // 找一个「还没填、且正确答案==L」的空位
+  let hitSlot=null;
+  for(const s of need){
+    if(!filled[s] && expected[s]===L){ hitSlot=s; break; }
+  }
+  if(hitSlot){ fillSlot(hitSlot, L); }
+  else { wrong(L); }
+}
+function fillSlot(slot, L){
+  filled[slot]=true;
+  const box=document.getElementById('box-'+slot);
+  box.textContent=L; box.className='box ok pop';
+  const t=tileOf(L);
+  if(t){ t.classList.remove('dim'); t.classList.add('ok'); }
+  beep('hit'); speak(L);
+  cheer();
+  // 本关是否完成
+  if(need.every(s=>filled[s])){
+    star++; document.getElementById('hud-star').textContent=star;
+    gameActive=false; clearTimeout(hintTimer);
+    setTimeout(nextRound, 850);
+  }
+}
+function wrong(L){
+  wrongs++; star=0;
+  document.getElementById('hud-star').textContent=star;
+  beep('err'); sad();
+  // 抖动还没填的空位
+  need.filter(s=>!filled[s]).forEach(s=>{
+    const box=document.getElementById('box-'+s);
+    box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+  });
+  const t=tileOf(L);
+  if(t){ t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake'); }
+}
+
+// ═══════════ 键盘 ═══════════
+document.addEventListener('keydown', e=>{
+  if(e.repeat) return;
+  const k=(e.key||'').toUpperCase();
+  if(!/^[A-Z]$/.test(k)) return;
+  onInput(k);
+});
+
+// ═══════════ 提示 ═══════════
+function armHint(){
+  clearTimeout(hintTimer);
+  if(!hintOn) return;
+  hintTimer=setTimeout(()=>{
+    if(!gameActive) return;
+    need.filter(s=>!filled[s]).forEach(s=>{
+      const t=tileOf(expected[s]);
+      if(t){ t.classList.remove('hintpulse'); void t.offsetWidth; t.classList.add('hintpulse'); }
+    });
+    armHint(); // 继续隔一会再提示
+  }, 4500);
+}
+
+// ═══════════ 吉祥物 ═══════════
+function cheer(){ const m=document.getElementById('mascot'); m.classList.remove('cheer','sad'); void m.offsetWidth; m.classList.add('cheer'); }
+function sad(){ const m=document.getElementById('mascot'); m.classList.remove('cheer','sad'); void m.offsetWidth; m.classList.add('sad'); }
+
+// ═══════════ 结束 & 庆祝 ═══════════
+const MODE_CN={after:'只找后面',before:'只找前面',both:'前后都找'};
+function endGame(){
+  gameActive=false; clearTimeout(hintTimer);
+  const secs=Math.round((Date.now()-startMs)/1000);
+  const m=Math.floor(secs/60), s=secs%60;
+  let medal, label;
+  if(wrongs<=1){ medal='🥇'; label='太棒啦！几乎全对！'; }
+  else if(wrongs<=4){ medal='🥈'; label='很不错哦！'; }
+  else { medal='🥉'; label='完成啦，继续加油！'; }
+  // 记录最好成绩（错得最少，其次用时最短）
+  const key='neighbor_best_'+mode;
+  let best=null; try{ best=JSON.parse(localStorage.getItem(key)); }catch(e){}
+  const isPB=!best || wrongs<best.wrongs || (wrongs===best.wrongs && secs<best.secs);
+  if(isPB){ try{ localStorage.setItem(key, JSON.stringify({wrongs,secs})); }catch(e){} }
+
+  document.getElementById('cel-title').textContent=label;
+  document.getElementById('cel-medal').textContent=medal;
+  document.getElementById('cel-stats').innerHTML=
+    `玩法：${MODE_CN[mode]}<br>用时：${m>0?m+'分':''}${s}秒<br>答错：${wrongs} 次` +
+    (isPB?'<br>🎉 新纪录！':'');
+  document.getElementById('cel-overlay').classList.remove('hide');
+  beep('yay'); launchConfetti();
+}
+
+// ═══════════ 彩带 ═══════════
+const cvs=document.getElementById('confetti-c'), cctx=cvs.getContext('2d');
+let cparts=[], confRaf;
+function launchConfetti(){
+  cvs.width=innerWidth; cvs.height=innerHeight;
+  const colors=['#f87171','#fb923c','#fbbf24','#4ade80','#60a5fa','#c084fc','#f472b6','#34d399'];
+  for(let i=0;i<120;i++){
+    cparts.push({ x:Math.random()*innerWidth, y:-10,
+      vx:(Math.random()-.5)*6, vy:Math.random()*4+2,
+      color:colors[Math.floor(Math.random()*colors.length)],
+      sz:Math.random()*9+3, rot:Math.random()*360,
+      rv:(Math.random()-.5)*8, life:1, dec:.012+Math.random()*.006 });
+  }
+  if(!confRaf) animConf();
+}
+function animConf(){
+  cctx.clearRect(0,0,cvs.width,cvs.height);
+  cparts=cparts.filter(p=>p.life>0);
+  cparts.forEach(p=>{
+    cctx.save(); cctx.globalAlpha=Math.max(0,p.life);
+    cctx.translate(p.x,p.y); cctx.rotate(p.rot*Math.PI/180);
+    cctx.fillStyle=p.color; cctx.fillRect(-p.sz/2,-p.sz/2,p.sz,p.sz);
+    cctx.restore();
+    p.x+=p.vx; p.y+=p.vy; p.rot+=p.rv; p.life-=p.dec;
+  });
+  if(cparts.length){ confRaf=requestAnimationFrame(animConf); }
+  else { confRaf=null; cctx.clearRect(0,0,cvs.width,cvs.height); }
+}
+</script>
+</body>
+</html>
