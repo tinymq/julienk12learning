@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>战战加减综合运算练习生成器</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --panel:#ffffff; --ink:#1f2430; --muted:#6b7280;
+    --line:#d7dbe2; --brand:#2f6fed; --brand-soft:#eaf1ff; --ok:#1f9d55; --warn:#d9480f;
+  }
+  html[data-theme="dark"]{
+    --bg:#161a22; --panel:#1e232d; --ink:#e6e9ef; --muted:#9aa2b1;
+    --line:#333a47; --brand:#5b8cff; --brand-soft:#22304d; --ok:#3fbf6d; --warn:#ff8a4c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"Segoe UI","Microsoft YaHei",Roboto,sans-serif;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .wrap{max-width:920px;margin:0 auto;padding:24px 18px 60px;}
+
+  h1{font-size:22px;margin:6px 0 2px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:16px;}
+
+  /* 控制面板 */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;margin-bottom:22px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .grp-title{font-size:12px;color:var(--muted);margin:2px 0 10px;letter-spacing:.5px;}
+  .row{display:flex;flex-wrap:wrap;gap:16px 22px;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field label{font-size:12px;color:var(--muted);}
+  .field input[type=number],.field select{width:108px;padding:8px 10px;border:1px solid var(--line);
+    border-radius:9px;background:var(--bg);color:var(--ink);font-size:15px;}
+  .chk{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;user-select:none;}
+  .chk input{width:17px;height:17px;accent-color:var(--brand);}
+  .types{display:flex;flex-wrap:wrap;gap:10px 18px;background:var(--brand-soft);
+    border-radius:10px;padding:12px 14px;margin:4px 0 4px;}
+  .types .chk{font-size:14px;}
+  .divider{height:1px;background:var(--line);margin:16px 0;}
+
+  .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;}
+  button{font-size:15px;padding:10px 18px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel);color:var(--ink);cursor:pointer;transition:.15s;}
+  button:hover{border-color:var(--brand);}
+  button.primary{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:600;}
+  button.primary:hover{filter:brightness(1.05);}
+
+  /* 练习纸 */
+  .sheet-head{display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:20px;}
+  .sheet-head .t{font-size:20px;font-weight:700;}
+  .sheet-head .meta{font-size:13px;color:var(--muted);}
+  .meta-line{display:flex;gap:28px;font-size:14px;margin:-8px 0 26px;color:var(--muted);flex-wrap:wrap;}
+  .meta-line span b{color:var(--ink);font-weight:600;}
+
+  /* 更宽松的题目间距（打印友好）*/
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:30px 52px;}
+  .q{border:1px solid var(--line);border-radius:12px;padding:20px 22px;min-height:150px;
+    display:flex;flex-direction:column;}
+  .q .idx{font-size:12px;color:var(--muted);margin-bottom:8px;}
+  .q .tag{display:inline-block;font-size:11px;color:var(--brand);border:1px solid var(--brand);
+    border-radius:6px;padding:1px 6px;margin-left:8px;vertical-align:middle;}
+
+  /* inline 题 */
+  .q .expr{font-size:23px;font-weight:600;letter-spacing:.5px;margin:2px 0 6px;font-variant-numeric:tabular-nums;}
+  .q .work{flex:1;min-height:44px;} /* 留白写竖式 */
+  .ans-blank{border-bottom:1.5px solid var(--muted);width:82px;display:inline-block;height:1.35em;vertical-align:bottom;}
+  .q input.type{width:92px;padding:5px 8px;font-size:18px;border:1px solid var(--line);
+    border-radius:7px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums;}
+  .q .verdict{font-size:16px;margin-left:10px;font-weight:700;}
+  .q .verdict.ok{color:var(--ok);} .q .verdict.no{color:var(--warn);}
+
+  /* 竖式数字谜 */
+  .vg{display:inline-block;margin:2px 0 8px;}
+  .vrow{display:grid;grid-template-columns:26px 40px 40px;justify-items:center;align-items:center;}
+  .vrow .op{font-size:21px;color:var(--ink);}
+  .vrow .cell{font-size:26px;line-height:38px;height:38px;font-variant-numeric:tabular-nums;width:100%;text-align:center;}
+  .vrow.line .cell{border-top:2.5px solid var(--ink);}
+  .cell.unk{color:var(--brand);font-weight:700;}
+  .unk-solve{font-size:16px;margin-top:6px;color:var(--ink);}
+  .unk-solve b{font-weight:700;} .unk-solve .bk{border-bottom:1.4px solid var(--muted);display:inline-block;width:34px;height:1.2em;vertical-align:bottom;}
+  .unk-solve span{margin-right:16px;white-space:nowrap;}
+
+  /* 答案页 */
+  .answers{margin-top:30px;padding-top:18px;border-top:1px dashed var(--line);}
+  .answers h3{font-size:15px;margin:0 0 12px;color:var(--muted);}
+  .answers ol{margin:0;padding-left:24px;columns:2;column-gap:34px;}
+  .answers li{font-size:14px;margin-bottom:8px;font-variant-numeric:tabular-nums;break-inside:avoid;}
+  .answers .step{color:var(--muted);}
+
+  .hint{font-size:12.5px;color:var(--muted);margin-top:14px;line-height:1.7;}
+  .theme-btn{position:fixed;top:12px;right:14px;font-size:13px;padding:6px 12px;}
+
+  @media print{
+    @page{ margin:1.6cm; }
+    body{background:#fff;}
+    .no-print{display:none !important;}
+    .wrap{max-width:100%;padding:0;}
+    .q{min-height:170px;break-inside:avoid;}
+    .grid{gap:26px 46px;}
+    .answers{break-before:page;}
+  }
+  @media(max-width:560px){ .grid{grid-template-columns:1fr;} .answers ol{columns:1;} }
+</style>
+</head>
+<body>
+<button class="theme-btn no-print" id="themeBtn" onclick="toggleTheme()">🌙 深色</button>
+<div class="wrap">
+
+  <div class="no-print">
+    <h1>战战加减综合运算练习生成器</h1>
+    <div class="sub">四种题型 · 每天 10 道 · 无限出题、难度可调 · 可打印留竖式 / 也可屏幕作答</div>
+
+    <div class="panel">
+      <div class="grp-title">① 出哪些题型（勾选，混合出题）</div>
+      <div class="types">
+        <label class="chk"><input type="checkbox" class="ty" value="paren" checked> 加减混合·带括号<br><small style="color:var(--muted)">85−(15+15)＝</small></label>
+        <label class="chk"><input type="checkbox" class="ty" value="chain" checked> 三数连加连减<br><small style="color:var(--muted)">98−38−37＝</small></label>
+        <label class="chk"><input type="checkbox" class="ty" value="add3" checked> 加法竖式数字谜<br><small style="color:var(--muted)">求汉字＝几</small></label>
+        <label class="chk"><input type="checkbox" class="ty" value="twostep" checked> 两步数字谜·成语<br><small style="color:var(--muted)">亡羊补牢</small></label>
+      </div>
+
+      <div class="divider"></div>
+      <div class="grp-title">② 计算题难度（作用于前两种）</div>
+      <div class="row">
+        <div class="field">
+          <label>数字上限（结果不超过）</label>
+          <input type="number" id="maxN" value="100" min="20" max="1000">
+        </div>
+        <div class="field">
+          <label>最小数（≥ 此值）</label>
+          <input type="number" id="minN" value="10" min="1" max="99">
+        </div>
+        <div class="field">
+          <label>运算类型</label>
+          <select id="ops">
+            <option value="mix" selected>加减混合</option>
+            <option value="add">纯加法</option>
+            <option value="sub">纯减法</option>
+          </select>
+        </div>
+        <label class="chk" style="margin-bottom:8px"><input type="checkbox" id="carry" checked> 必须有进退位</label>
+      </div>
+
+      <div class="divider"></div>
+      <div class="grp-title">③ 出题</div>
+      <div class="row">
+        <div class="field">
+          <label>题目数量</label>
+          <input type="number" id="count" value="10" min="1" max="30">
+        </div>
+        <label class="chk" style="margin-bottom:8px"><input type="checkbox" id="online"> 屏幕作答（仅计算题可打字自测）</label>
+        <label class="chk" style="margin-bottom:8px"><input type="checkbox" id="showAns"> 附答案页</label>
+      </div>
+      <div class="btns">
+        <button class="primary" onclick="gen()">🎲 出一套新题</button>
+        <button onclick="window.print()">🖨️ 打印练习纸</button>
+        <button onclick="checkAll()" id="checkBtn" style="display:none">✅ 批改</button>
+      </div>
+      <div class="hint">
+        <b>四种题型对应战战练习册</b>：带括号（p56）、三数连减（p41）、加法数字谜（p37）、两步成语数字谜（p54）。默认四种混合、共 10 题，正好卡他"加减很熟、不上乘除"的水平。<br>
+        <b>数字谜怎么玩</b>：竖式里汉字代表未知数字，根据竖式算出每个汉字＝几，写在下方（成语题的四个字连起来是一句成语）。每题<b>唯一解</b>，已用程序校验。<br>
+        <b>用法</b>：点"出一套新题"→"打印练习纸"，他手写竖式；计算题也可勾"屏幕作答"打字自测（他爱打字）。想加难度：调高数字上限；想只练某类：只勾那一种。
+      </div>
+    </div>
+  </div>
+
+  <!-- 练习纸 -->
+  <div id="sheet">
+    <div class="sheet-head">
+      <div class="t">数学每日练习 · 加减综合</div>
+      <div class="meta">姓名：__________________　　　　　　日期：__________________　　　　　　用时：____________</div>
+    </div>
+    <div class="meta-line">
+      <span>共 <b id="mCount">10</b> 题</span>
+      <span>限时约 <b>10</b> 分钟</span>
+      <span>目标：<b>又快又准</b>，写清竖式</span>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="answers" id="answers" style="display:none"></div>
+  </div>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let problems = [];
+
+// ── 素材池 ──
+const IDIOMS = ['亡羊补牢','守株待兔','刻舟求剑','掩耳盗铃','叶公好龙','狐假虎威',
+  '对牛弹琴','画蛇添足','车水马龙','鸟语花香','百花齐放','万紫千红','学无止境',
+  '勤能补拙','自相矛盾','拔苗助长','望梅止渴','画龙点睛','滥竽充数','春暖花开',
+  '水落石出','山清水秀','手忙脚乱','七上八下'];
+const CHARS = [...'春夏秋冬花草山水日月星光风云雨雪金木火土天地和喜乐福寿松竹梅兰'];
+
+function randInt(lo,hi){ return lo + Math.floor(Math.random()*(hi-lo+1)); }
+function pick(arr){ return arr[randInt(0,arr.length-1)]; }
+function pickN(arr,n){ const a=[...arr],out=[]; while(out.length<n&&a.length){ out.push(a.splice(randInt(0,a.length-1),1)[0]); } return out; }
+function needsCarry(x,y,op){ const ux=x%10,uy=y%10; return op==='+'?(ux+uy>=10):(ux<uy); }
+function pickOp(m){ if(m==='add')return '+'; if(m==='sub')return '-'; return Math.random()<0.5?'+':'-'; }
+function d2(n){ return [Math.floor(n/10), n%10]; }
+
+// ── 类型：加减混合·带括号 / 三数连加连减 ──
+function genInline(cfg, paren){
+  for(let t=0;t<600;t++){
+    const op1=pickOp(cfg.ops), op2=pickOp(cfg.ops);
+    const a=randInt(cfg.min,cfg.max), b=randInt(cfg.min,cfg.max), c=randInt(cfg.min,cfg.max);
+    let expr, ans, steps, carryOk;
+    if(paren){
+      if(randInt(0,1)===0){
+        const inner=op1==='+'?a+b:a-b; if(inner<0||inner>cfg.max)continue;
+        ans=op2==='+'?inner+c:inner-c; if(ans<0||ans>cfg.max)continue;
+        expr=`( ${a} ${op1} ${b} ) ${op2} ${c}`; steps=[`${a}${op1}${b}=${inner}`,`${inner}${op2}${c}=${ans}`];
+        carryOk=needsCarry(a,b,op1)||needsCarry(inner,c,op2);
+      }else{
+        const inner=op2==='+'?b+c:b-c; if(inner<0||inner>cfg.max)continue;
+        ans=op1==='+'?a+inner:a-inner; if(ans<0||ans>cfg.max)continue;
+        expr=`${a} ${op1} ( ${b} ${op2} ${c} )`; steps=[`${b}${op2}${c}=${inner}`,`${a}${op1}${inner}=${ans}`];
+        carryOk=needsCarry(b,c,op2)||needsCarry(a,inner,op1);
+      }
+    }else{
+      const m=op1==='+'?a+b:a-b; if(m<0||m>cfg.max)continue;
+      ans=op2==='+'?m+c:m-c; if(ans<0||ans>cfg.max)continue;
+      expr=`${a} ${op1} ${b} ${op2} ${c}`; steps=[`${a}${op1}${b}=${m}`,`${m}${op2}${c}=${ans}`];
+      carryOk=needsCarry(a,b,op1)||needsCarry(m,c,op2);
+    }
+    if(cfg.carry && !carryOk) continue;
+    return {kind:'inline', type:paren?'带括号':'连加减', expr, answer:ans, steps};
+  }
+  return null;
+}
+
+// ── 类型：加法竖式数字谜（三个两位数相加，挖2格）──
+function genAdd3(){
+  for(let t=0;t<800;t++){
+    const a=randInt(10,80), b=randInt(10,80), c=randInt(10,80), S=a+b+c;
+    if(S<10||S>99) continue;
+    const D={a:d2(a), b:d2(b), c:d2(c)};
+    const cells=[['a',0],['a',1],['b',0],['b',1],['c',0],['c',1]];
+    let i=randInt(0,5), j=randInt(0,5); if(i===j) continue; if(i>j)[i,j]=[j,i];
+    const bl=[cells[i], cells[j]];
+    // 唯一解验证
+    let count=0;
+    for(let v1=0;v1<10;v1++)for(let v2=0;v2<10;v2++){
+      if(bl[0][1]===0&&v1===0)continue; if(bl[1][1]===0&&v2===0)continue;
+      const g={a:[...D.a], b:[...D.b], c:[...D.c]};
+      g[bl[0][0]][bl[0][1]]=v1; g[bl[1][0]][bl[1][1]]=v2;
+      if(g.a[0]*10+g.a[1] + g.b[0]*10+g.b[1] + g.c[0]*10+g.c[1] === S) count++;
+    }
+    if(count!==1) continue;
+    // 分配汉字
+    const labels=pickN(CHARS,2);
+    const blankSet=new Set([i,j]);
+    const labelOf={}; labelOf[i]=labels[0]; labelOf[j]=labels[1];
+    const valOf={}; valOf[i]=D[bl[0][0]][bl[0][1]]; valOf[j]=D[bl[1][0]][bl[1][1]];
+    // 造 cell
+    function cellAt(idx, numKey, digIdx){
+      if(blankSet.has(idx)) return {v:labelOf[idx], unk:true};
+      return {v:String(D[numKey][digIdx])};
+    }
+    const Sd=d2(S);
+    const rows=[
+      {op:'',  cells:[cellAt(0,'a',0), cellAt(1,'a',1)]},
+      {op:'',  cells:[cellAt(2,'b',0), cellAt(3,'b',1)]},
+      {op:'+', cells:[cellAt(4,'c',0), cellAt(5,'c',1)]},
+      {op:'',  line:true, cells:[{v:String(Sd[0])},{v:String(Sd[1])}]},
+    ];
+    const unknowns=[i,j].map(k=>({label:labelOf[k], val:valOf[k]}));
+    return {kind:'vgrid', type:'加法数字谜', rows, unknowns,
+      steps:[`${a}+${b}+${c}=${S}`]};
+  }
+  return null;
+}
+
+// ── 类型：两步竖式数字谜·成语（挖4格）──
+function genTwostep(){
+  for(let t=0;t<2500;t++){
+    const op1=pickOp('mix'), op2=pickOp('mix');
+    const A=randInt(11,89), B=randInt(11,89);
+    const M=op1==='+'?A+B:A-B; if(M<10||M>99)continue;
+    const Dn=randInt(11,89);
+    const R=op2==='+'?M+Dn:M-Dn; if(R<10||R>99)continue;
+    const dg={A:d2(A), B:d2(B), M:d2(M), D:d2(Dn)};
+    const bA=randInt(0,1), bB=randInt(0,1), bM=randInt(0,1), bD=randInt(0,1);
+    // 唯一解
+    let count=0;
+    for(let va=0;va<10;va++)for(let vb=0;vb<10;vb++)for(let vm=0;vm<10;vm++)for(let vd=0;vd<10;vd++){
+      if(bA===0&&va===0)continue; if(bB===0&&vb===0)continue;
+      if(bM===0&&vm===0)continue; if(bD===0&&vd===0)continue;
+      const gA=[...dg.A],gB=[...dg.B],gM=[...dg.M],gD=[...dg.D];
+      gA[bA]=va; gB[bB]=vb; gM[bM]=vm; gD[bD]=vd;
+      const nA=gA[0]*10+gA[1], nB=gB[0]*10+gB[1], nM=gM[0]*10+gM[1], nD=gD[0]*10+gD[1];
+      if((op1==='+'?nA+nB:nA-nB)!==nM) continue;
+      if((op2==='+'?nM+nD:nM-nD)===R) count++;
+    }
+    if(count!==1) continue;
+    const idiom=pick(IDIOMS.filter(w=>new Set(w).size===4));
+    const ch=[...idiom];
+    const rowsDef=[
+      {key:'A', blank:bA, op:''},
+      {key:'B', blank:bB, op:op1},
+      {key:'M', blank:bM, op:'', line:true},
+      {key:'D', blank:bD, op:op2},
+      {key:'R', blank:-1, op:'', line:true},
+    ];
+    const trueVal={A:dg.A, B:dg.B, M:dg.M, D:dg.D, R:d2(R)};
+    const unknowns=[];
+    const rows=rowsDef.map((rd,ri)=>{
+      const dig=trueVal[rd.key];
+      const cells=[0,1].map(di=>{
+        if(rd.blank===di){
+          const label=ch[unknowns.length];
+          unknowns.push({label, val:dig[di]});
+          return {v:label, unk:true};
+        }
+        return {v:String(dig[di])};
+      });
+      return {op:rd.op, line:rd.line||false, cells};
+    });
+    return {kind:'vgrid', type:'成语数字谜', idiom, rows, unknowns,
+      steps:[`${A}${op1}${B}=${M}`, `${M}${op2}${Dn}=${R}`]};
+  }
+  return null;
+}
+
+// ── 主出题 ──
+function enabledTypes(){
+  return [...document.querySelectorAll('.ty:checked')].map(e=>e.value);
+}
+function makeOne(cfg, ty){
+  if(ty==='paren')   return genInline(cfg, true);
+  if(ty==='chain')   return genInline(cfg, false);
+  if(ty==='add3')    return genAdd3();
+  if(ty==='twostep') return genTwostep();
+  return null;
+}
+function gen(){
+  const cfg={
+    max: Math.max(20, +$('maxN').value || 100),
+    min: Math.min(99, Math.max(1, +$('minN').value || 10)),
+    count: Math.min(30, Math.max(1, +$('count').value || 10)),
+    ops: $('ops').value,
+    carry: $('carry').checked,
+  };
+  let types=enabledTypes();
+  if(types.length===0){ alert('至少勾选一种题型'); return; }
+  problems=[]; let fails=0;
+  for(let i=0;i<cfg.count;i++){
+    const ty=types[randInt(0,types.length-1)];
+    let p=makeOne(cfg,ty);
+    if(!p){ // 该类型偶发失败，换个类型兜底
+      for(const alt of types){ p=makeOne(cfg,alt); if(p)break; }
+    }
+    if(p) problems.push(p); else fails++;
+  }
+  render();
+  if(fails>0) alert(`有 ${fails} 道没生成出来（设置太严）。可放宽：调高数字上限、或取消"必须进退位"。`);
+}
+
+// ── 渲染 ──
+function vgridHTML(p){
+  const rows=p.rows.map(r=>{
+    const cells=r.cells.map(c=>`<span class="cell${c.unk?' unk':''}">${c.v}</span>`).join('');
+    return `<div class="vrow${r.line?' line':''}"><span class="op">${r.op}</span>${cells}</div>`;
+  }).join('');
+  const solve=p.unknowns.map(u=>`<span>${u.label} = <span class="bk"></span></span>`).join('');
+  return `<div class="vg">${rows}</div><div class="unk-solve">${solve}</div>`;
+}
+function render(){
+  const online=$('online').checked;
+  $('checkBtn').style.display = online ? '' : 'none';
+  $('mCount').textContent = problems.length;
+
+  $('grid').innerHTML = problems.map((p,i)=>{
+    let body;
+    if(p.kind==='inline'){
+      body = (online
+        ? `<div class="expr">${p.expr} =</div><div><input class="type" type="number" data-i="${i}" inputmode="numeric"><span class="verdict" id="v${i}"></span></div>`
+        : `<div class="expr">${p.expr} = <span class="ans-blank"></span></div><div class="work"></div>`);
+    }else{
+      body = vgridHTML(p); // 数字谜始终打印式（手写）
+    }
+    return `<div class="q">${body}</div>`;
+  }).join('');
+
+  const ans=$('answers');
+  if($('showAns').checked && problems.length){
+    ans.style.display='';
+    ans.innerHTML=`<h3>答案页（供家长核对）</h3><ol>` + problems.map(p=>{
+      if(p.kind==='inline'){
+        return `<li><b>${p.answer}</b> <span class="step">〔${p.steps.join('；')}〕</span></li>`;
+      }else{
+        const us=p.unknowns.map(u=>`${u.label}=${u.val}`).join('　');
+        const idi=p.idiom?`（${p.idiom}）`:'';
+        return `<li><b>${us}</b>${idi} <span class="step">〔${p.steps.join('；')}〕</span></li>`;
+      }
+    }).join('') + `</ol>`;
+  }else{ ans.style.display='none'; ans.innerHTML=''; }
+}
+
+function checkAll(){
+  document.querySelectorAll('input.type').forEach(inp=>{
+    const i=+inp.dataset.i, v=$('v'+i);
+    if(inp.value===''){ v.textContent=''; v.className='verdict'; return; }
+    if(+inp.value===problems[i].answer){ v.textContent='✓'; v.className='verdict ok'; }
+    else { v.textContent='✗'; v.className='verdict no'; }
+  });
+}
+
+$('online').addEventListener('change', render);
+$('showAns').addEventListener('change', render);
+
+function toggleTheme(){
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme', dark?'light':'dark');
+  $('themeBtn').textContent = dark?'🌙 深色':'☀️ 浅色';
+}
+
+gen(); // 打开即出一套
+</script>
+</body>
+</html>
