@@ -9,11 +9,13 @@
     --bg:#eef3fb; --panel:#ffffff; --ink:#1f2430; --muted:#6b7280;
     --line:#d7dbe2; --brand:#2f6fed; --brand2:#06b6d4; --soft:#eaf1ff;
     --ok:#1f9d55; --okbg:#e7f7ee; --bad:#e03131; --badbg:#ffecec; --gold:#f59e0b;
+    --grid:#e7ecf3;
   }
   html[data-theme="dark"]{
     --bg:#141821; --panel:#1e232d; --ink:#e6e9ef; --muted:#9aa2b1;
     --line:#333a47; --brand:#5b8cff; --brand2:#22d3ee; --soft:#22304d;
     --ok:#3fbf6d; --okbg:#16311f; --bad:#ff6b6b; --badbg:#3a1c1c; --gold:#fbbf24;
+    --grid:#2a313d;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -50,9 +52,22 @@
   .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2));transition:width .25s;}
 
   /* 题卡 */
+  /* 舞台三区：题目 / 草稿纸 / 键盘 */
+  .stage{display:grid;gap:12px;grid-template-columns:1fr 1fr;grid-template-areas:"prob scratch" "keys keys";margin-bottom:6px;}
+  .problemwrap{grid-area:prob;display:flex;flex-direction:column;gap:8px;min-width:0;}
+  .scratch{grid-area:scratch;display:flex;flex-direction:column;min-width:0;min-height:230px;}
+  .keys{grid-area:keys;display:flex;flex-direction:column;gap:10px;min-width:0;}
+  .scratch-head{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--muted);margin:0 2px 6px;}
+  .mini{font-size:12px;padding:5px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;}
+  .mini:active{transform:scale(.96);}
+  .scratch canvas{flex:1;width:100%;min-height:190px;border:1px solid var(--line);border-radius:14px;
+    touch-action:none;display:block;background-color:var(--panel);
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:26px 26px;background-position:-1px -1px;}
+
   .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;
-    padding:26px 20px;min-height:172px;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    box-shadow:0 6px 18px rgba(0,0,0,.06);margin-bottom:16px;}
+    padding:22px 18px;min-height:172px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    box-shadow:0 6px 18px rgba(0,0,0,.06);}
   .expr{font-size:30px;font-weight:700;letter-spacing:1px;text-align:center;font-variant-numeric:tabular-nums;line-height:1.4;}
   .slot{display:inline-block;min-width:56px;padding:2px 10px;margin:0 2px;border-bottom:3px solid var(--brand);
     color:var(--brand);border-radius:6px 6px 0 0;}
@@ -106,6 +121,24 @@
   #printSheet .unk-solve span{margin-right:16px;}
   #printSheet .unk-solve .bk{border-bottom:1.4px solid #666;display:inline-block;width:34px;height:1.1em;}
 
+  /* 横屏：一屏放下、不滚动（题｜草稿｜键盘 三列）*/
+  @media (orientation:landscape) and (min-width:820px){
+    html,body{height:100%;overflow:hidden;}
+    .wrap{height:100vh;max-width:100%;display:flex;flex-direction:column;padding:8px 16px 12px;}
+    .topbar{margin:2px 2px 6px;}
+    .progress{margin:0 4px 6px;} .bar{margin:0 4px 8px;}
+    #game{flex:1;min-height:0;display:flex;flex-direction:column;}
+    .stage{flex:1;min-height:0;margin-bottom:0;grid-template-rows:1fr;
+      grid-template-columns:1.05fr 1.3fr 0.85fr;grid-template-areas:"prob scratch keys";}
+    .problemwrap{min-height:0;} .scratch{min-height:0;} .keys{min-height:0;}
+    .card{overflow:auto;min-height:0;}
+    .pad{flex:0 0 auto;} .actionbtn{margin-top:auto;}
+  }
+  /* 窄屏（手机竖屏）：单列堆叠 */
+  @media (max-width:560px){
+    .stage{grid-template-columns:1fr;grid-template-areas:"prob" "scratch" "keys";}
+  }
+
   @media print{
     @page{margin:1.6cm;}
     body{background:#fff;}
@@ -150,10 +183,20 @@
     <div id="game">
       <div class="progress"><span>第 <b id="pNo">1</b> / <b id="pTot">10</b> 题</span><span>⭐ 答对 <b id="pOk">0</b></span></div>
       <div class="bar"><i id="pBar" style="width:0%"></i></div>
-      <div class="card" id="card"></div>
-      <div class="feedback" id="fb"></div>
-      <div class="pad" id="pad"></div>
-      <button class="actionbtn" id="action" onclick="onAction()">确定</button>
+      <div class="stage">
+        <div class="problemwrap">
+          <div class="card" id="card"></div>
+          <div class="feedback" id="fb"></div>
+        </div>
+        <div class="scratch">
+          <div class="scratch-head"><span>✏️ 草稿纸（手指写竖式）</span><button class="mini" onclick="clearScratch()">🧽 清空</button></div>
+          <canvas id="scratchCanvas"></canvas>
+        </div>
+        <div class="keys">
+          <div class="pad" id="pad"></div>
+          <button class="actionbtn" id="action" onclick="onAction()">确定</button>
+        </div>
+      </div>
     </div>
 
     <div id="done" hidden></div>
@@ -341,7 +384,7 @@ function showProblem(){
   $('pBar').style.width=Math.round(idx/session.length*100)+'%';
   $('fb').textContent=''; $('fb').className='feedback';
   const act=$('action'); act.textContent='确定'; act.className='actionbtn';
-  renderCard(); renderPad();
+  renderCard(); renderPad(); clearScratch();
 }
 function renderCard(){
   const p=cur.p;
@@ -448,6 +491,26 @@ function doPrint(){
   window.print();
 }
 
+// ── 草稿纸（手指/鼠标写竖式）──
+let sctx=null, drawing=false;
+function initScratch(){
+  const c=$('scratchCanvas'); if(!c) return;
+  const w=Math.max(1, c.clientWidth), h=Math.max(1, c.clientHeight);
+  c.width=w; c.height=h;
+  sctx=c.getContext('2d');
+  sctx.lineWidth=2.6; sctx.lineCap='round'; sctx.lineJoin='round';
+  const ink=()=> (getComputedStyle(document.documentElement).getPropertyValue('--ink').trim()||'#1f2430');
+  c.onpointerdown=e=>{ drawing=true; c.setPointerCapture(e.pointerId); sctx.strokeStyle=ink();
+    const p=spos(e,c); sctx.beginPath(); sctx.moveTo(p.x,p.y); sctx.lineTo(p.x+0.1,p.y+0.1); sctx.stroke(); };
+  c.onpointermove=e=>{ if(!drawing) return; const p=spos(e,c); sctx.lineTo(p.x,p.y); sctx.stroke(); };
+  c.onpointerup=c.onpointercancel=c.onpointerleave=()=>{ drawing=false; };
+}
+function spos(e,c){ const r=c.getBoundingClientRect();
+  return {x:(e.clientX-r.left)*(c.width/r.width), y:(e.clientY-r.top)*(c.height/r.height)}; }
+function clearScratch(){ if(sctx) sctx.clearRect(0,0,$('scratchCanvas').width,$('scratchCanvas').height); }
+let rzTimer=null;
+window.addEventListener('resize', ()=>{ clearTimeout(rzTimer); rzTimer=setTimeout(initScratch,150); });
+
 // ── 杂项 ──
 function toggleSettings(){ $('settings').hidden=!$('settings').hidden; }
 function toggleTheme(){
@@ -457,6 +520,7 @@ function toggleTheme(){
 }
 
 newSession(); // 打开即开始一组
+requestAnimationFrame(initScratch); // 布局完成后初始化草稿纸
 </script>
 </body>
 </html>
